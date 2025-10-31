@@ -342,4 +342,215 @@
           }, [editedCrescentRows, refreshTrigger]);
 
           // Comparison
-          const compar
+          const comparison = useMemo(() => {
+            if (!crescentProcessed.length || !plxForComparison.length) return [];
+
+            const allEIDs = new Set([
+              ...crescentProcessed.map(r => r.EID),
+              ...plxForComparison.map(r => r.EID)
+            ]);
+
+            return Array.from(allEIDs).map(eid => {
+              const crescentRecord = crescentProcessed.find(r => r.EID === eid);
+              const plxRecord = plxForComparison.find(r => r.EID === eid);
+
+              const crescentHours = crescentRecord?.Total_Hours || 0;
+              const plxHours = plxRecord?.Total_Hours || 0;
+              const diff = Math.abs(crescentHours - plxHours);
+
+              return {
+                EID: eid,
+                Name: plxRecord?.Name || '',
+                Lines: crescentRecord?.Lines || '',
+                FullBadges: crescentRecord?.FullBadges || '',
+                Total_Hours_Crescent: crescentHours,
+                Total_Hours_PLX: plxHours,
+                Status: diff < 0.01 ? 'Match' : 'Mismatch'
+              };
+            }).sort((a, b) => a.EID.localeCompare(b.EID));
+          }, [crescentProcessed, plxForComparison, refreshTrigger]);
+
+          const mismatches = useMemo(() => {
+            return comparison.filter(r => r.Status === 'Mismatch');
+          }, [comparison]);
+
+          // Smart recommendations (shortened for space - includes all the pattern matching logic)
+          const recommendations = useMemo(() => {
+            const recs = [];
+            
+            mismatches.forEach(mismatch => {
+              if (mismatch.Total_Hours_Crescent === 0 || mismatch.Total_Hours_PLX === 0) {
+                const crescentBadge = mismatch.FullBadges;
+                const crescentEID = mismatch.EID;
+                const badgeLetters = crescentBadge.match(/[A-Za-z]{3}$/)?.[0]?.toLowerCase() || '';
+                
+                plxForComparison.forEach(plxRecord => {
+                  const plxLastName = plxRecord.Name.split(' ').pop()?.toLowerCase() || '';
+                  const plxEID = plxRecord.EID;
+                  
+                  if (plxEID === crescentEID) return;
+                  
+                  if (badgeLetters.length === 3 && plxLastName.includes(badgeLetters)) {
+                    recs.push({
+                      type: 'Name Match',
+                      crescentEID, crescentBadge,
+                      crescentHours: mismatch.Total_Hours_Crescent,
+                      plxEID, plxName: plxRecord.Name,
+                      plxHours: plxRecord.Total_Hours,
+                      reason: `Badge letters "${badgeLetters.toUpperCase()}" match last name`
+                    });
+                  }
+                  
+                  if (crescentEID.length === plxEID.length) {
+                    let diffCount = 0;
+                    for (let i = 0; i < crescentEID.length; i++) {
+                      if (crescentEID[i] !== plxEID[i]) diffCount++;
+                    }
+                    if (diffCount === 1) {
+                      recs.push({
+                        type: 'EID Typo',
+                        crescentEID, crescentBadge,
+                        crescentHours: mismatch.Total_Hours_Crescent,
+                        plxEID, plxName: plxRecord.Name,
+                        plxHours: plxRecord.Total_Hours,
+                        reason: `EID off by 1 digit: ${crescentEID} vs ${plxEID}`
+                      });
+                    }
+                  }
+                  
+                  if (Math.abs(crescentEID.length - plxEID.length) >= 1) {
+                    const shorter = crescentEID.length < plxEID.length ? crescentEID : plxEID;
+                    const longer = crescentEID.length > plxEID.length ? crescentEID : plxEID;
+                    
+                    if (longer.includes(shorter)) {
+                      recs.push({
+                        type: Math.abs(crescentEID.length - plxEID.length) === 1 ? 'EID Length' : 'Multiple Digits',
+                        crescentEID, crescentBadge,
+                        crescentHours: mismatch.Total_Hours_Crescent,
+                        plxEID, plxName: plxRecord.Name,
+                        plxHours: plxRecord.Total_Hours,
+                        reason: `Missing ${Math.abs(crescentEID.length - plxEID.length)} digits`
+                      });
+                    }
+                  }
+                });
+              }
+            });
+            
+            return recs;
+          }, [mismatches, plxForComparison]);
+
+          const totalCrescent = useMemo(() => crescentProcessed.reduce((sum, r) => sum + (parseFloat(r.Total_Hours) || 0), 0), [crescentProcessed, refreshTrigger]);
+          const totalCrescentDirect = useMemo(() => crescentProcessed.reduce((sum, r) => sum + (parseFloat(r.Direct_Hours) || 0), 0), [crescentProcessed, refreshTrigger]);
+          const totalCrescentIndirect = useMemo(() => crescentProcessed.reduce((sum, r) => sum + (parseFloat(r.Indirect_Hours) || 0), 0), [crescentProcessed, refreshTrigger]);
+          const totalPLX = useMemo(() => plxForComparison.reduce((sum, r) => sum + (parseFloat(r.Total_Hours) || 0), 0), [plxForComparison, refreshTrigger]);
+          const totalPLXDirect = useMemo(() => plxForComparison.reduce((sum, r) => sum + (parseFloat(r.Direct_Hours) || 0), 0), [plxForComparison, refreshTrigger]);
+          const totalPLXIndirect = useMemo(() => plxForComparison.reduce((sum, r) => sum + (parseFloat(r.Indirect_Hours) || 0), 0), [plxForComparison, refreshTrigger]);
+
+          const totalDiff = Math.abs(totalCrescent - totalPLX);
+          const totalsMatch = totalDiff < 0.01;
+
+          const errorReportText = useMemo(() => {
+            const checkedErrors = mismatches.filter(m => crescentErrors.has(m.EID));
+            if (checkedErrors.length === 0) return '';
+
+            return checkedErrors.map(row => {
+              const badge = row.FullBadges.split(', ')[0] || '';
+              return `${row.Name} worked on ${row.Lines} for ${row.Total_Hours_PLX.toFixed(2)} hours (PLX number), not ${row.Total_Hours_Crescent.toFixed(2)} hours (Crescent number) [${badge}]`;
+            }).join('\n\n');
+          }, [mismatches, crescentErrors]);
+
+          const handleCopyReport = () => {
+            navigator.clipboard.writeText(errorReportText);
+            alert('Error report copied to clipboard!');
+          };
+
+          const handleFixRecommendation = (rec) => {
+            const updatedRows = editedCrescentRows.map(row => {
+              if (row.EID === rec.crescentEID) {
+                return {
+                  ...row,
+                  EID: rec.plxEID,
+                  FullBadges: row.FullBadges.replace(
+                    new RegExp(`PLX-${rec.crescentEID}-`, 'i'),
+                    `PLX-${rec.plxEID}-`
+                  ),
+                  Badge_Last3: row.FullBadges.replace(
+                    new RegExp(`PLX-${rec.crescentEID}-`, 'i'),
+                    `PLX-${rec.plxEID}-`
+                  ).slice(-3)
+                };
+              }
+              return row;
+            });
+            
+            setEditedCrescentRows(updatedRows);
+            setRefreshTrigger(prev => prev + 1);
+          };
+
+          const sortCrescentData = (column) => {
+            const direction = crescentSort.column === column && crescentSort.direction === 'asc' ? 'desc' : 'asc';
+            setCrescentSort({ column, direction });
+            
+            const sorted = [...editedCrescentRows].sort((a, b) => {
+              const aVal = column === 'EID' ? a.EID : a.FullBadges;
+              const bVal = column === 'EID' ? b.EID : b.FullBadges;
+              return direction === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+            });
+            setEditedCrescentRows(sorted);
+          };
+
+          const sortPlxData = (column) => {
+            const direction = plxSort.column === column && plxSort.direction === 'asc' ? 'desc' : 'asc';
+            setPlxSort({ column, direction });
+            
+            const sorted = [...editedPlxRows].sort((a, b) => {
+              const aVal = column === 'EID' ? a.EID : a.Name;
+              const bVal = column === 'EID' ? b.EID : b.Name;
+              return direction === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+            });
+            setEditedPlxRows(sorted);
+          };
+
+          return (
+            <div className="w-full max-w-[1800px] mx-auto p-6 bg-gradient-to-br from-blue-50 to-indigo-50 min-h-screen">
+              <div className="mb-8">
+                <h1 className="text-4xl font-bold text-gray-800 mb-2">Labor Hours Comparison Tool</h1>
+                <p className="text-gray-600">Compare ProLogistix and Crescent reports to identify discrepancies</p>
+              </div>
+
+              {/* File Upload - simplified for brevity */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div className="bg-white p-6 rounded-xl shadow-lg">
+                  <label className="flex items-center justify-center w-full h-36 border-3 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-blue-500">
+                    <div className="text-center">
+                      <Upload size={40} className="mx-auto mb-3 text-blue-500" />
+                      <span className="text-sm font-medium">{plxFile ? plxFile.name : 'Upload PLX Report (Excel)'}</span>
+                    </div>
+                    <input type="file" className="hidden" accept=".xlsx,.xls" onChange={(e) => { const file = e.target.files[0]; if (file) { setPlxFile(file); parsePLXFile(file); }}} />
+                  </label>
+                </div>
+                <div className="bg-white p-6 rounded-xl shadow-lg">
+                  <label className="flex items-center justify-center w-full h-36 border-3 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-indigo-500">
+                    <div className="text-center">
+                      <Upload size={40} className="mx-auto mb-3 text-indigo-500" />
+                      <span className="text-sm font-medium">{crescentFile ? crescentFile.name : 'Upload Crescent Report (CSV/Excel)'}</span>
+                    </div>
+                    <input type="file" className="hidden" accept=".csv,.xlsx,.xls" onChange={(e) => { const file = e.target.files[0]; if (file) { setCrescentFile(file); parseCrescentFile(file); }}} />
+                  </label>
+                </div>
+              </div>
+
+              {/* Settings */}
+              {plxData && (
+                <div className="mb-6 bg-white p-6 rounded-xl shadow-lg">
+                  <h3 className="text-lg font-semibold mb-4">Comparison Settings</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <select value={selectedDay} onChange={(e) => setSelectedDay(e.target.value)} className="p-3 border-2 rounded-lg">
+                      {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => <option key={day} value={day}>{day}</option>)}
+                    </select>
+                    <select value={selectedShift} onChange={(e) => setSelectedShift(e.target.value)} className="p-3 border-2 rounded-lg">
+                      <option value="1st Shift">1st Shift</option>
+                      <option value="2nd Shift">2nd Shift</option>
+                    </select>
+                    <button onClick={()
