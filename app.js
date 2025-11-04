@@ -515,9 +515,52 @@ const PLXCrescentCompare = () => {
     const checkedErrors = mismatches.filter(m => crescentErrors.has(m.EID));
     if (checkedErrors.length === 0) return '';
 
-    return checkedErrors.map(row => {
+    // Helper function to convert "LAST, FIRST MIDDLE" to "First Middle Last"
+    const formatName = (name) => {
+      if (!name || !name.includes(',')) return name;
+      const parts = name.split(',').map(p => p.trim());
+      if (parts.length !== 2) return name;
+      const [last, firstMiddle] = parts;
+      // Convert to proper case (title case)
+      const toTitleCase = (str) => str.toLowerCase().split(' ').map(word =>
+        word.charAt(0).toUpperCase() + word.slice(1)
+      ).join(' ');
+      return `${toTitleCase(firstMiddle)} ${toTitleCase(last)}`;
+    };
+
+    // Helper function to format lines like "LINEG, LINEK" to "Line G/K"
+    const formatLines = (lines) => {
+      if (!lines) return '';
+      const lineArray = lines.split(',').map(l => l.trim());
+      const formatted = lineArray.map(line => {
+        // Extract letter(s) after "LINE"
+        const match = line.match(/LINE\s*([A-Z]+)/i);
+        return match ? match[1].toUpperCase() : line;
+      });
+      return `Line ${formatted.join('/')}`;
+    };
+
+    // Helper function to format hours without unnecessary decimals
+    const formatHours = (hours) => {
+      const rounded = Math.round(hours * 100) / 100;
+      return rounded % 1 === 0 ? rounded.toFixed(0) : rounded.toString();
+    };
+
+    // Helper function to extract PLX number (e.g., "PLX-21057999-AND" -> "21057999-AND")
+    const extractPlxNumber = (badge) => {
+      const match = badge.match(/PLX-(.+)/i);
+      return match ? match[1] : badge;
+    };
+
+    return checkedErrors.map((row, index) => {
       const badge = row.FullBadges.split(', ')[0] || '';
-      return `${row.Name} worked on ${row.Lines} for ${row.Total_Hours_PLX.toFixed(2)} hours (PLX number), not ${row.Total_Hours_Crescent.toFixed(2)} hours (Crescent number) [${badge}]`;
+      const formattedName = formatName(row.Name);
+      const formattedLines = formatLines(row.Lines);
+      const plxHours = formatHours(row.Total_Hours_PLX);
+      const crescentHours = formatHours(row.Total_Hours_Crescent);
+      const plxNumber = extractPlxNumber(badge);
+
+      return `${index + 1}. ${formattedName} – worked on ${formattedLines} for ${plxHours} hours, not ${crescentHours} hours\nPLX: ${plxNumber}`;
     }).join('\n\n');
   }, [mismatches, crescentErrors]);
 
