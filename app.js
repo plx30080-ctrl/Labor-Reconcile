@@ -73,6 +73,9 @@ const PLXCrescentCompare = () => {
   const [plxCollapsed, setPlxCollapsed] = useState(true);
   const [crescentSort, setCrescentSort] = useState({ column: 'EID', direction: 'asc' });
   const [plxSort, setPlxSort] = useState({ column: 'EID', direction: 'asc' });
+  const [crescentSearch, setCrescentSearch] = useState('');
+  const [plxSearch, setPlxSearch] = useState('');
+  const [comparisonSearch, setComparisonSearch] = useState('');
 
   // Parse PLX Excel file
   const parsePLXFile = (file) => {
@@ -188,7 +191,7 @@ const PLXCrescentCompare = () => {
           const lineKey = Object.keys(row).find(k => k.toLowerCase() === 'line name');
           const clockInKey = Object.keys(row).find(k => k.toLowerCase() === 'clock in time');
           const clockOutKey = Object.keys(row).find(k => k.toLowerCase() === 'clock out time');
-          
+
           const badge = badgeKey ? row[badgeKey] : '';
           const eidMatch = badge.match(/PLX-(\d+)-/i);
           if (!eidMatch) return;
@@ -203,6 +206,8 @@ const PLXCrescentCompare = () => {
               Badges: new Set(),
               Lines: new Set(),
               Total_Hours: 0,
+              Direct_Hours: 0,
+              Indirect_Hours: 0,
               ClockIn: '',
               ClockOut: ''
             };
@@ -211,6 +216,15 @@ const PLXCrescentCompare = () => {
           aggregated[eid].Badges.add(badge);
           aggregated[eid].Lines.add(line);
           aggregated[eid].Total_Hours += hours;
+
+          // Check if this specific line/row is indirect or direct
+          const isIndirect = line.toLowerCase().includes('indirect');
+          if (isIndirect) {
+            aggregated[eid].Indirect_Hours += hours;
+          } else {
+            aggregated[eid].Direct_Hours += hours;
+          }
+
           if (clockInKey && row[clockInKey]) {
             aggregated[eid].ClockIn = row[clockInKey];
           }
@@ -225,21 +239,11 @@ const PLXCrescentCompare = () => {
           FullBadges: Array.from(record.Badges).join(', '),
           Lines: Array.from(record.Lines).filter(l => l).join(', '),
           Total_Hours: Math.round(record.Total_Hours * 100) / 100,
-          Direct_Hours: 0,
-          Indirect_Hours: 0,
+          Direct_Hours: Math.round(record.Direct_Hours * 100) / 100,
+          Indirect_Hours: Math.round(record.Indirect_Hours * 100) / 100,
           ClockIn: record.ClockIn,
           ClockOut: record.ClockOut
         }));
-
-        // Calculate direct/indirect for Crescent
-        records.forEach(record => {
-          const lines = record.Lines.toLowerCase();
-          if (lines.includes('indirect')) {
-            record.Indirect_Hours = record.Total_Hours;
-          } else {
-            record.Direct_Hours = record.Total_Hours;
-          }
-        });
 
         setCrescentData(records);
         setEditedCrescentRows(records.map(r => ({...r})));
@@ -344,12 +348,128 @@ const PLXCrescentCompare = () => {
         Name: plxRecord?.Name || '',
         Lines: crescentRecord?.Lines || '',
         FullBadges: crescentRecord?.FullBadges || '',
+        Badge_Last3: crescentRecord?.Badge_Last3 || '',
         Total_Hours_Crescent: crescentHours,
         Total_Hours_PLX: plxHours,
         Status: diff < 0.01 ? 'Match' : 'Mismatch'
       };
     }).sort((a, b) => a.EID.localeCompare(b.EID));
   }, [crescentProcessed, plxForComparison, refreshTrigger]);
+
+  // Split Crescent rows to show Direct and Indirect separately
+  const displayCrescentRows = useMemo(() => {
+    const separated = [];
+    editedCrescentRows.forEach((row, originalIdx) => {
+      const hasIndirect = row.Indirect_Hours > 0;
+      const hasDirect = row.Direct_Hours > 0;
+
+      if (hasIndirect && hasDirect) {
+        // Split into two rows
+        separated.push({
+          ...row,
+          Lines: 'Indirect',
+          Total_Hours: row.Indirect_Hours,
+          Direct_Hours: 0,
+          Indirect_Hours: row.Indirect_Hours,
+          _originalIdx: originalIdx,
+          _type: 'indirect',
+          _isSplit: true
+        });
+        separated.push({
+          ...row,
+          Total_Hours: row.Direct_Hours,
+          Direct_Hours: row.Direct_Hours,
+          Indirect_Hours: 0,
+          _originalIdx: originalIdx,
+          _type: 'direct',
+          _isSplit: true
+        });
+      } else {
+        // Keep as single row
+        separated.push({
+          ...row,
+          _originalIdx: originalIdx,
+          _type: hasIndirect ? 'indirect' : 'direct',
+          _isSplit: false
+        });
+      }
+    });
+    return separated;
+  }, [editedCrescentRows]);
+
+  // Filtered data for search
+  const filteredCrescentRows = useMemo(() => {
+    if (!crescentSearch.trim()) return displayCrescentRows;
+    const searchLower = crescentSearch.toLowerCase();
+    return displayCrescentRows.filter(row =>
+      row.EID?.toLowerCase().includes(searchLower) ||
+      row.FullBadges?.toLowerCase().includes(searchLower) ||
+      row.Badge_Last3?.toLowerCase().includes(searchLower) ||
+      row.Lines?.toLowerCase().includes(searchLower)
+    );
+  }, [displayCrescentRows, crescentSearch]);
+
+  // Split PLX rows to show Direct and Indirect separately
+  const displayPlxRows = useMemo(() => {
+    const separated = [];
+    editedPlxRows.forEach((row, originalIdx) => {
+      const hasIndirect = row.Indirect_Hours > 0;
+      const hasDirect = row.Direct_Hours > 0;
+
+      if (hasIndirect && hasDirect) {
+        // Split into two rows
+        separated.push({
+          ...row,
+          Department: '005-251-221 (Indirect)',
+          Total_Hours: row.Indirect_Hours,
+          Direct_Hours: 0,
+          Indirect_Hours: row.Indirect_Hours,
+          _originalIdx: originalIdx,
+          _type: 'indirect',
+          _isSplit: true
+        });
+        separated.push({
+          ...row,
+          Department: '004-251-211 (Direct)',
+          Total_Hours: row.Direct_Hours,
+          Direct_Hours: row.Direct_Hours,
+          Indirect_Hours: 0,
+          _originalIdx: originalIdx,
+          _type: 'direct',
+          _isSplit: true
+        });
+      } else {
+        // Keep as single row
+        separated.push({
+          ...row,
+          _originalIdx: originalIdx,
+          _type: hasIndirect ? 'indirect' : 'direct',
+          _isSplit: false
+        });
+      }
+    });
+    return separated;
+  }, [editedPlxRows]);
+
+  const filteredPlxRows = useMemo(() => {
+    if (!plxSearch.trim()) return displayPlxRows;
+    const searchLower = plxSearch.toLowerCase();
+    return displayPlxRows.filter(row =>
+      row.EID?.toLowerCase().includes(searchLower) ||
+      row.Name?.toLowerCase().includes(searchLower)
+    );
+  }, [displayPlxRows, plxSearch]);
+
+  const filteredComparison = useMemo(() => {
+    if (!comparisonSearch.trim()) return comparison;
+    const searchLower = comparisonSearch.toLowerCase();
+    return comparison.filter(row =>
+      row.EID?.toLowerCase().includes(searchLower) ||
+      row.Name?.toLowerCase().includes(searchLower) ||
+      row.Badge_Last3?.toLowerCase().includes(searchLower) ||
+      row.Lines?.toLowerCase().includes(searchLower)
+    );
+  }, [comparison, comparisonSearch]);
 
   const mismatches = useMemo(() => {
     return comparison.filter(r => r.Status === 'Mismatch');
@@ -593,13 +713,58 @@ const PLXCrescentCompare = () => {
     alert('Error report copied to clipboard!');
   };
 
+  const handlePlxSync = (eid) => {
+    // Find the Crescent record for this EID
+    const crescentRecord = editedCrescentRows.find(r => r.EID === eid);
+    if (!crescentRecord) return;
+
+    // Find or create the PLX record for this EID
+    const plxIndex = editedPlxRows.findIndex(r => r.EID === eid);
+
+    if (plxIndex >= 0) {
+      // Update existing PLX record
+      const newRows = [...editedPlxRows];
+      newRows[plxIndex] = {
+        ...newRows[plxIndex],
+        Total_Hours: crescentRecord.Total_Hours,
+        Direct_Hours: crescentRecord.Direct_Hours,
+        Indirect_Hours: crescentRecord.Indirect_Hours
+      };
+      setEditedPlxRows(newRows);
+    } else {
+      // Create new PLX record
+      const newRow = {
+        EID: eid,
+        Name: crescentRecord.Name || '',
+        Total_Hours: crescentRecord.Total_Hours,
+        Direct_Hours: crescentRecord.Direct_Hours,
+        Indirect_Hours: crescentRecord.Indirect_Hours
+      };
+      setEditedPlxRows([...editedPlxRows, newRow]);
+    }
+
+    setRefreshTrigger(prev => prev + 1);
+  };
+
   const sortCrescentData = (column) => {
     const direction = crescentSort.column === column && crescentSort.direction === 'asc' ? 'desc' : 'asc';
     setCrescentSort({ column, direction });
-    
+
     const sorted = [...editedCrescentRows].sort((a, b) => {
-      const aVal = column === 'EID' ? a.EID : a.FullBadges;
-      const bVal = column === 'EID' ? b.EID : b.FullBadges;
+      let aVal, bVal;
+      if (column === 'EID') {
+        aVal = a.EID;
+        bVal = b.EID;
+      } else if (column === 'Badge') {
+        aVal = a.Badge_Last3 || '';
+        bVal = b.Badge_Last3 || '';
+      } else if (column === 'Lines') {
+        aVal = a.Lines || '';
+        bVal = b.Lines || '';
+      } else {
+        aVal = a[column] || '';
+        bVal = b[column] || '';
+      }
       return direction === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
     });
     setEditedCrescentRows(sorted);
@@ -804,7 +969,14 @@ const PLXCrescentCompare = () => {
               </button>
               {!crescentCollapsed && (
                 <div className="p-6 pt-0">
-                  <div className="flex items-center justify-end mb-4">
+                  <div className="flex items-center justify-between mb-4 gap-3">
+                    <input
+                      type="text"
+                      placeholder="Search by EID, Badge, or Line..."
+                      value={crescentSearch}
+                      onChange={(e) => setCrescentSearch(e.target.value)}
+                      className="flex-1 px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-indigo-500 focus:outline-none text-sm"
+                    />
                     <button
                       onClick={() => {
                         const newRow = {
@@ -839,69 +1011,110 @@ const PLXCrescentCompare = () => {
                               Badge <ArrowUpDown size={14} />
                             </button>
                           </th>
-                          <th className="p-3 text-left font-semibold">Lines</th>
-                          <th className="p-3 text-right font-semibold">Hours</th>
+                          <th className="p-3 text-left">
+                            <button onClick={() => sortCrescentData('Lines')} className="flex items-center gap-1 font-semibold hover:text-indigo-600">
+                              Lines <ArrowUpDown size={14} />
+                            </button>
+                          </th>
+                          <th className="p-3 text-right font-semibold">Total</th>
+                          <th className="p-3 text-right font-semibold">Direct</th>
+                          <th className="p-3 text-right font-semibold">Indirect</th>
                           <th className="p-3 text-center font-semibold">Actions</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {editedCrescentRows.map((row, idx) => (
-                          <tr key={idx} className="border-t border-gray-200 hover:bg-indigo-50/50 transition-colors">
+                        {filteredCrescentRows.map((row, idx) => {
+                          const originalIdx = row._originalIdx;
+                          const isSplit = row._isSplit;
+                          const isIndirect = row._type === 'indirect';
+                          return (
+                          <tr key={`${originalIdx}-${row._type}`} className={`border-t border-gray-200 hover:bg-indigo-50/50 transition-colors ${isSplit ? 'bg-gray-50' : ''}`}>
                             <td className="p-2">
                               <input
                                 type="text"
                                 value={row.EID}
                                 onChange={(e) => {
                                   const newRows = [...editedCrescentRows];
-                                  newRows[idx].EID = e.target.value;
+                                  newRows[originalIdx].EID = e.target.value;
                                   setEditedCrescentRows(newRows);
                                 }}
                                 className="w-full border border-gray-300 rounded px-2 py-1 focus:border-indigo-500 focus:outline-none"
+                                disabled={isSplit}
                               />
                             </td>
                             <td className="p-2">
                               <input
                                 type="text"
-                                value={row.FullBadges}
+                                value={row.Badge_Last3}
                                 onChange={(e) => {
                                   const newRows = [...editedCrescentRows];
-                                  newRows[idx].FullBadges = e.target.value;
-                                  newRows[idx].Badge_Last3 = e.target.value.slice(-3);
+                                  const newLast3 = e.target.value.toUpperCase();
+                                  newRows[originalIdx].Badge_Last3 = newLast3;
+                                  if (newRows[originalIdx].FullBadges) {
+                                    const badgeBase = newRows[originalIdx].FullBadges.slice(0, -3);
+                                    newRows[originalIdx].FullBadges = badgeBase + newLast3;
+                                  }
                                   setEditedCrescentRows(newRows);
                                 }}
-                                className="w-full border border-gray-300 rounded px-2 py-1 text-xs focus:border-indigo-500 focus:outline-none"
-                                placeholder="PLX-123-ABC"
+                                title={row.FullBadges}
+                                className="w-full border border-gray-300 rounded px-2 py-1 text-xs focus:border-indigo-500 focus:outline-none uppercase"
+                                placeholder="ABC"
+                                maxLength="3"
+                                disabled={isSplit}
                               />
                             </td>
                             <td className="p-2">
+                              <span className="text-xs px-2 py-1">{row.Lines}</span>
+                            </td>
+                            <td className="p-2 text-right">
+                              <span className="text-sm px-2 py-1">{row.Total_Hours.toFixed(2)}</span>
+                            </td>
+                            <td className="p-2 text-right">
                               <input
-                                type="text"
-                                value={row.Lines}
+                                type="number"
+                                step="0.01"
+                                value={row.Direct_Hours}
                                 onChange={(e) => {
                                   const newRows = [...editedCrescentRows];
-                                  newRows[idx].Lines = e.target.value;
+                                  const newValue = parseFloat(e.target.value) || 0;
+                                  if (isSplit) {
+                                    newRows[originalIdx].Direct_Hours = newValue;
+                                    newRows[originalIdx].Total_Hours = newValue + newRows[originalIdx].Indirect_Hours;
+                                  } else {
+                                    newRows[originalIdx].Direct_Hours = newValue;
+                                    newRows[originalIdx].Total_Hours = newValue + newRows[originalIdx].Indirect_Hours;
+                                  }
                                   setEditedCrescentRows(newRows);
                                 }}
-                                className="w-full border border-gray-300 rounded px-2 py-1 text-xs focus:border-indigo-500 focus:outline-none"
+                                className="w-20 text-right border border-gray-300 rounded px-2 py-1 focus:border-indigo-500 focus:outline-none"
+                                disabled={isSplit && !isIndirect}
                               />
                             </td>
                             <td className="p-2 text-right">
                               <input
                                 type="number"
                                 step="0.01"
-                                value={row.Total_Hours}
+                                value={row.Indirect_Hours}
                                 onChange={(e) => {
                                   const newRows = [...editedCrescentRows];
-                                  newRows[idx].Total_Hours = parseFloat(e.target.value) || 0;
+                                  const newValue = parseFloat(e.target.value) || 0;
+                                  if (isSplit) {
+                                    newRows[originalIdx].Indirect_Hours = newValue;
+                                    newRows[originalIdx].Total_Hours = newValue + newRows[originalIdx].Direct_Hours;
+                                  } else {
+                                    newRows[originalIdx].Indirect_Hours = newValue;
+                                    newRows[originalIdx].Total_Hours = newValue + newRows[originalIdx].Direct_Hours;
+                                  }
                                   setEditedCrescentRows(newRows);
                                 }}
-                                className="w-24 text-right border border-gray-300 rounded px-2 py-1 focus:border-indigo-500 focus:outline-none"
+                                className="w-20 text-right border border-gray-300 rounded px-2 py-1 focus:border-indigo-500 focus:outline-none"
+                                disabled={isSplit && isIndirect}
                               />
                             </td>
                             <td className="p-2 text-center">
                               <button
                                 onClick={() => {
-                                  const newRows = editedCrescentRows.filter((_, i) => i !== idx);
+                                  const newRows = editedCrescentRows.filter((_, i) => i !== originalIdx);
                                   setEditedCrescentRows(newRows);
                                 }}
                                 className="text-red-500 hover:text-red-700 text-xs font-medium"
@@ -910,7 +1123,8 @@ const PLXCrescentCompare = () => {
                               </button>
                             </td>
                           </tr>
-                        ))}
+                        );
+                        })}
                       </tbody>
                     </table>
                   </div>
@@ -932,7 +1146,14 @@ const PLXCrescentCompare = () => {
               </button>
               {!plxCollapsed && (
                 <div className="p-6 pt-0">
-                  <div className="flex items-center justify-end mb-4">
+                  <div className="flex items-center justify-between mb-4 gap-3">
+                    <input
+                      type="text"
+                      placeholder="Search by EID or Name..."
+                      value={plxSearch}
+                      onChange={(e) => setPlxSearch(e.target.value)}
+                      className="flex-1 px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none text-sm"
+                    />
                     <button
                       onClick={() => {
                         const newRow = {
@@ -963,23 +1184,30 @@ const PLXCrescentCompare = () => {
                               Name <ArrowUpDown size={14} />
                             </button>
                           </th>
-                          <th className="p-3 text-right font-semibold">Hours</th>
+                          <th className="p-3 text-right font-semibold">Total</th>
+                          <th className="p-3 text-right font-semibold">Direct</th>
+                          <th className="p-3 text-right font-semibold">Indirect</th>
                           <th className="p-3 text-center font-semibold">Actions</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {editedPlxRows.map((row, idx) => (
-                          <tr key={idx} className="border-t border-gray-200 hover:bg-blue-50/50 transition-colors">
+                        {filteredPlxRows.map((row, idx) => {
+                          const originalIdx = row._originalIdx;
+                          const isSplit = row._isSplit;
+                          const isIndirect = row._type === 'indirect';
+                          return (
+                          <tr key={`${originalIdx}-${row._type}`} className={`border-t border-gray-200 hover:bg-blue-50/50 transition-colors ${isSplit ? 'bg-gray-50' : ''}`}>
                             <td className="p-2">
                               <input
                                 type="text"
                                 value={row.EID}
                                 onChange={(e) => {
                                   const newRows = [...editedPlxRows];
-                                  newRows[idx].EID = e.target.value;
+                                  newRows[originalIdx].EID = e.target.value;
                                   setEditedPlxRows(newRows);
                                 }}
                                 className="w-full border border-gray-300 rounded px-2 py-1 focus:border-blue-500 focus:outline-none"
+                                disabled={isSplit}
                               />
                             </td>
                             <td className="p-2">
@@ -988,29 +1216,62 @@ const PLXCrescentCompare = () => {
                                 value={row.Name}
                                 onChange={(e) => {
                                   const newRows = [...editedPlxRows];
-                                  newRows[idx].Name = e.target.value;
+                                  newRows[originalIdx].Name = e.target.value;
                                   setEditedPlxRows(newRows);
                                 }}
                                 className="w-full border border-gray-300 rounded px-2 py-1 focus:border-blue-500 focus:outline-none"
+                                disabled={isSplit}
+                              />
+                            </td>
+                            <td className="p-2 text-right">
+                              <span className="text-sm px-2 py-1">{row.Total_Hours.toFixed(2)}</span>
+                            </td>
+                            <td className="p-2 text-right">
+                              <input
+                                type="number"
+                                step="0.01"
+                                value={row.Direct_Hours}
+                                onChange={(e) => {
+                                  const newRows = [...editedPlxRows];
+                                  const newValue = parseFloat(e.target.value) || 0;
+                                  if (isSplit) {
+                                    newRows[originalIdx].Direct_Hours = newValue;
+                                    newRows[originalIdx].Total_Hours = newValue + newRows[originalIdx].Indirect_Hours;
+                                  } else {
+                                    newRows[originalIdx].Direct_Hours = newValue;
+                                    newRows[originalIdx].Total_Hours = newValue + newRows[originalIdx].Indirect_Hours;
+                                  }
+                                  setEditedPlxRows(newRows);
+                                }}
+                                className="w-20 text-right border border-gray-300 rounded px-2 py-1 focus:border-blue-500 focus:outline-none"
+                                disabled={isSplit && !isIndirect}
                               />
                             </td>
                             <td className="p-2 text-right">
                               <input
                                 type="number"
                                 step="0.01"
-                                value={row.Total_Hours}
+                                value={row.Indirect_Hours}
                                 onChange={(e) => {
                                   const newRows = [...editedPlxRows];
-                                  newRows[idx].Total_Hours = parseFloat(e.target.value) || 0;
+                                  const newValue = parseFloat(e.target.value) || 0;
+                                  if (isSplit) {
+                                    newRows[originalIdx].Indirect_Hours = newValue;
+                                    newRows[originalIdx].Total_Hours = newValue + newRows[originalIdx].Direct_Hours;
+                                  } else {
+                                    newRows[originalIdx].Indirect_Hours = newValue;
+                                    newRows[originalIdx].Total_Hours = newValue + newRows[originalIdx].Direct_Hours;
+                                  }
                                   setEditedPlxRows(newRows);
                                 }}
-                                className="w-24 text-right border border-gray-300 rounded px-2 py-1 focus:border-blue-500 focus:outline-none"
+                                className="w-20 text-right border border-gray-300 rounded px-2 py-1 focus:border-blue-500 focus:outline-none"
+                                disabled={isSplit && isIndirect}
                               />
                             </td>
                             <td className="p-2 text-center">
                               <button
                                 onClick={() => {
-                                  const newRows = editedPlxRows.filter((_, i) => i !== idx);
+                                  const newRows = editedPlxRows.filter((_, i) => i !== originalIdx);
                                   setEditedPlxRows(newRows);
                                 }}
                                 className="text-red-500 hover:text-red-700 text-xs font-medium"
@@ -1019,7 +1280,8 @@ const PLXCrescentCompare = () => {
                               </button>
                             </td>
                           </tr>
-                        ))}
+                        );
+                        })}
                       </tbody>
                     </table>
                   </div>
@@ -1103,31 +1365,42 @@ const PLXCrescentCompare = () => {
             </button>
             {!comparisonCollapsed && (
               <div className="p-6 pt-0">
+                <div className="mb-4">
+                  <input
+                    type="text"
+                    placeholder="Search by EID, Name, Badge, or Line..."
+                    value={comparisonSearch}
+                    onChange={(e) => setComparisonSearch(e.target.value)}
+                    className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none text-sm"
+                  />
+                </div>
                 <div className="overflow-auto border-2 border-gray-200 rounded-lg max-h-96">
                   <table className="w-full text-sm">
                     <thead className="bg-gray-100 sticky top-0">
                       <tr>
                         <th className="p-3 text-left font-semibold">EID</th>
                         <th className="p-3 text-left font-semibold">Name</th>
+                        <th className="p-3 text-left font-semibold">Lines</th>
                         <th className="p-3 text-right font-semibold">Crescent</th>
                         <th className="p-3 text-right font-semibold">PLX</th>
                         <th className="p-3 text-center font-semibold">Status</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {comparison.map((row, idx) => (
-                        <tr 
-                          key={idx} 
+                      {filteredComparison.map((row, idx) => (
+                        <tr
+                          key={idx}
                           className={`border-t border-gray-200 hover:bg-gray-50 ${row.Status === 'Mismatch' ? 'bg-red-50' : ''}`}
                         >
                           <td className="p-3">{row.EID}</td>
                           <td className="p-3">{row.Name}</td>
+                          <td className="p-3">{row.Lines || '-'}</td>
                           <td className="p-3 text-right">{row.Total_Hours_Crescent.toFixed(2)}</td>
                           <td className="p-3 text-right">{row.Total_Hours_PLX.toFixed(2)}</td>
                           <td className="p-3 text-center">
                             <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                              row.Status === 'Match' 
-                                ? 'bg-green-100 text-green-800' 
+                              row.Status === 'Match'
+                                ? 'bg-green-100 text-green-800'
                                 : 'bg-red-100 text-red-800'
                             }`}>
                               {row.Status}
@@ -1163,6 +1436,7 @@ const PLXCrescentCompare = () => {
                       <th className="p-3 text-right font-semibold">PLX</th>
                       <th className="p-3 text-right font-semibold">Diff</th>
                       <th className="p-3 text-left font-semibold">Notes</th>
+                      <th className="p-3 text-center font-semibold">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1249,6 +1523,15 @@ const PLXCrescentCompare = () => {
                             placeholder="Add notes..."
                             className="w-full border border-gray-300 rounded px-2 py-1 text-xs focus:border-red-500 focus:outline-none"
                           />
+                        </td>
+                        <td className="p-3 text-center">
+                          <button
+                            onClick={() => handlePlxSync(row.EID)}
+                            className="px-3 py-1 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-xs font-medium transition-all whitespace-nowrap"
+                            title="Sync PLX hours to match Crescent"
+                          >
+                            PLX Sync
+                          </button>
                         </td>
                       </tr>
                     ))}
