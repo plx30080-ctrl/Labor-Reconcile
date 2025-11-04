@@ -76,6 +76,8 @@ const PLXCrescentCompare = () => {
   const [crescentSearch, setCrescentSearch] = useState('');
   const [plxSearch, setPlxSearch] = useState('');
   const [comparisonSearch, setComparisonSearch] = useState('');
+  const [originalPlxWorkbook, setOriginalPlxWorkbook] = useState(null);
+  const [plxRowMapping, setPlxRowMapping] = useState([]);
 
   // Parse PLX Excel file
   const parsePLXFile = (file) => {
@@ -84,6 +86,10 @@ const PLXCrescentCompare = () => {
       try {
         const data = new Uint8Array(e.target.result);
         const workbook = XLSX.read(data, { type: 'array' });
+
+        // Store original workbook for export
+        setOriginalPlxWorkbook(workbook);
+
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
         const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
 
@@ -120,6 +126,7 @@ const PLXCrescentCompare = () => {
         setShift1TotalRow(shift1TotalRowIdx);
 
         const records = [];
+        const rowMapping = [];
         for (let i = 5; i < jsonData.length; i++) {
           const row = jsonData[i];
           if (!row[fileColIdx]) continue;
@@ -140,13 +147,21 @@ const PLXCrescentCompare = () => {
             EID: eid,
             Name: name,
             row: row,
+            rowIndex: i,
             columnMapping: columnMapping,
             shift: shift,
             department: row[1]?.toString() || '' // Column B is index 1
           });
+
+          rowMapping.push({
+            eid: eid,
+            rowIndex: i,
+            department: row[1]?.toString() || ''
+          });
         }
 
         setPlxData(records);
+        setPlxRowMapping(rowMapping);
       } catch (error) {
         console.error('Error parsing PLX file:', error);
         alert('Error parsing PLX file. Please check the format.');
@@ -289,11 +304,11 @@ const PLXCrescentCompare = () => {
       }
       
       aggregated[record.EID].Total_Hours += totalHours;
-      
-      // Check if indirect (005-251-221) or direct (004-251-211)
-      if (record.department.includes('005-251-221')) {
+
+      // By default PLX hours are Direct unless Dept contains -251-221 (Indirect)
+      if (record.department.includes('-251-221')) {
         aggregated[record.EID].Indirect_Hours += totalHours;
-      } else if (record.department.includes('004-251-211')) {
+      } else {
         aggregated[record.EID].Direct_Hours += totalHours;
       }
     });
@@ -773,13 +788,81 @@ const PLXCrescentCompare = () => {
   const sortPlxData = (column) => {
     const direction = plxSort.column === column && plxSort.direction === 'asc' ? 'desc' : 'asc';
     setPlxSort({ column, direction });
-    
+
     const sorted = [...editedPlxRows].sort((a, b) => {
       const aVal = column === 'EID' ? a.EID : a.Name;
       const bVal = column === 'EID' ? b.EID : b.Name;
       return direction === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
     });
     setEditedPlxRows(sorted);
+  };
+
+  const handleExportRevisedPlx = () => {
+    if (!originalPlxWorkbook || !plxData) {
+      alert('Please upload a PLX file first');
+      return;
+    }
+
+    try {
+      // Clone the original workbook
+      const workbook = XLSX.utils.book_new();
+      const originalSheet = originalPlxWorkbook.Sheets[originalPlxWorkbook.SheetNames[0]];
+      const jsonData = XLSX.utils.sheet_to_json(originalSheet, { header: 1 });
+
+      // Create a map of edited hours by EID and day
+      const editedHoursMap = {};
+      editedPlxRows.forEach(row => {
+        if (!editedHoursMap[row.EID]) {
+          editedHoursMap[row.EID] = row;
+        }
+      });
+
+      // Find the original records for mapping
+      plxData.forEach(record => {
+        const editedRow = editedHoursMap[record.EID];
+        if (!editedRow) return;
+
+        const rowIdx = record.rowIndex;
+
+        // Update hours for each day column
+        Object.entries(record.columnMapping).forEach(([colIdx, info]) => {
+          if (info.day === selectedDay) {
+            const originalValue = parseFloat(jsonData[rowIdx][colIdx]) || 0;
+            // Calculate the total hours for this day from the original
+            let dayTotal = 0;
+            Object.entries(record.columnMapping).forEach(([cIdx, cInfo]) => {
+              if (cInfo.day === selectedDay) {
+                dayTotal += parseFloat(jsonData[rowIdx][cIdx]) || 0;
+              }
+            });
+
+            // Calculate the ratio to distribute new hours proportionally
+            if (dayTotal > 0) {
+              const ratio = originalValue / dayTotal;
+              jsonData[rowIdx][colIdx] = editedRow.Total_Hours * ratio;
+            } else {
+              // If no original hours, put all hours in first column for this day
+              const firstColForDay = Object.entries(record.columnMapping)
+                .find(([, cInfo]) => cInfo.day === selectedDay);
+              if (firstColForDay && firstColForDay[0] == colIdx) {
+                jsonData[rowIdx][colIdx] = editedRow.Total_Hours;
+              }
+            }
+          }
+        });
+      });
+
+      // Create new sheet from updated data
+      const newSheet = XLSX.utils.aoa_to_sheet(jsonData);
+      XLSX.utils.book_append_sheet(workbook, newSheet, 'Sheet1');
+
+      // Export the file
+      XLSX.writeFile(workbook, `Revised_PLX_${selectedDay}_${selectedShift.replace(' ', '_')}.xlsx`);
+      alert('Revised PLX file exported successfully!');
+    } catch (error) {
+      console.error('Error exporting PLX file:', error);
+      alert('Error exporting PLX file. Please try again.');
+    }
   };
 
   return (
@@ -872,12 +955,19 @@ const PLXCrescentCompare = () => {
                 <option value="2nd Shift">2nd Shift</option>
               </select>
             </div>
-            <div className="flex items-end">
+            <div className="flex items-end gap-3">
               <button
                 onClick={() => setRefreshTrigger(prev => prev + 1)}
-                className="w-full px-6 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-lg hover:from-blue-600 hover:to-indigo-700 font-semibold shadow-md hover:shadow-lg transition-all"
+                className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-lg hover:from-blue-600 hover:to-indigo-700 font-semibold shadow-md hover:shadow-lg transition-all"
               >
                 Refresh Comparison
+              </button>
+              <button
+                onClick={handleExportRevisedPlx}
+                disabled={!originalPlxWorkbook || !plxData}
+                className="flex-1 px-6 py-3 bg-gradient-to-r from-green-500 to-teal-600 text-white rounded-lg hover:from-green-600 hover:to-teal-700 font-semibold shadow-md hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Export Revised PLX
               </button>
             </div>
           </div>
