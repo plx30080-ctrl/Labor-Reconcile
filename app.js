@@ -855,8 +855,15 @@ const PLXCrescentCompare = () => {
   return (
     <div className="w-full max-w-[1800px] mx-auto p-6 bg-gradient-to-br from-blue-50 to-indigo-50 min-h-screen">
       <div className="mb-8">
-        <h1 className="text-4xl font-bold text-gray-800 mb-2">Labor Hours Comparison Tool</h1>
-        <p className="text-gray-600">Compare ProLogistix and Crescent reports to identify discrepancies</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-4xl font-bold text-gray-800 mb-2">Labor Hours Comparison Tool</h1>
+            <p className="text-gray-600">Compare ProLogistix and Crescent reports to identify discrepancies</p>
+          </div>
+          <div className="text-right">
+            <span className="text-sm text-gray-500 font-mono">v1.2.0</span>
+          </div>
+        </div>
       </div>
 
       {/* File Upload Section */}
