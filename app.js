@@ -150,13 +150,13 @@ const PLXCrescentCompare = () => {
             rowIndex: i,
             columnMapping: columnMapping,
             shift: shift,
-            department: row[1]?.toString() || '' // Column B is index 1
+            department: row[0]?.toString() || '' // Column A is index 0
           });
 
           rowMapping.push({
             eid: eid,
             rowIndex: i,
-            department: row[1]?.toString() || ''
+            department: row[0]?.toString() || ''
           });
         }
 
