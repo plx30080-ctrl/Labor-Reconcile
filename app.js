@@ -811,15 +811,35 @@ const PLXCrescentCompare = () => {
       const headers = ['Dept', 'EID', 'Name', 'Hours'];
       const data = [headers];
 
-      // Separate Direct and Indirect rows
-      const directRows = editedPlxRows.filter(row => {
-        const dept = row.Department || '';
-        return !dept.includes('-251-221');
-      });
+      // Separate Direct and Indirect rows based on actual hours, not department
+      const directRows = [];
+      const indirectRows = [];
 
-      const indirectRows = editedPlxRows.filter(row => {
-        const dept = row.Department || '';
-        return dept.includes('-251-221');
+      editedPlxRows.forEach(row => {
+        const hasDirectHours = (row.Direct_Hours || 0) > 0;
+        const hasIndirectHours = (row.Indirect_Hours || 0) > 0;
+
+        // Add to Direct if they have Direct hours
+        if (hasDirectHours) {
+          directRows.push({
+            Department: row.Department && row.Department.includes('-251-221') ?
+              row.Department.replace('-251-221', '-251-211') : (row.Department || '004-251-211'),
+            EID: row.EID,
+            Name: row.Name,
+            Hours: row.Direct_Hours
+          });
+        }
+
+        // Add to Indirect if they have Indirect hours
+        if (hasIndirectHours) {
+          indirectRows.push({
+            Department: row.Department && !row.Department.includes('-251-221') ?
+              row.Department.replace('-251-211', '-251-221') : (row.Department || '005-251-221'),
+            EID: row.EID,
+            Name: row.Name,
+            Hours: row.Indirect_Hours
+          });
+        }
       });
 
       // Add Direct rows
@@ -828,12 +848,12 @@ const PLXCrescentCompare = () => {
           row.Department || '',
           row.EID || '',
           row.Name || '',
-          (row.Total_Hours || 0).toFixed(2)
+          (row.Hours || 0).toFixed(2)
         ]);
       });
 
       // Calculate Direct summary
-      const directHours = directRows.reduce((sum, row) => sum + (row.Total_Hours || 0), 0);
+      const directHours = directRows.reduce((sum, row) => sum + (row.Hours || 0), 0);
 
       // Add blank row
       data.push([]);
@@ -844,12 +864,12 @@ const PLXCrescentCompare = () => {
           row.Department || '',
           row.EID || '',
           row.Name || '',
-          (row.Total_Hours || 0).toFixed(2)
+          (row.Hours || 0).toFixed(2)
         ]);
       });
 
       // Calculate Indirect summary
-      const indirectHours = indirectRows.reduce((sum, row) => sum + (row.Total_Hours || 0), 0);
+      const indirectHours = indirectRows.reduce((sum, row) => sum + (row.Hours || 0), 0);
 
       // Add blank row before summary
       data.push([]);
@@ -858,7 +878,7 @@ const PLXCrescentCompare = () => {
       data.push(['Summary', '', '', '']);
       data.push(['Direct Associates:', directRows.length, 'Direct Hours:', directHours.toFixed(2)]);
       data.push(['Indirect Associates:', indirectRows.length, 'Indirect Hours:', indirectHours.toFixed(2)]);
-      data.push(['Total Associates:', directRows.length + indirectRows.length, 'Total Hours:', (directHours + indirectHours).toFixed(2)]);
+      data.push(['Total Associates:', editedPlxRows.length, 'Total Hours:', (directHours + indirectHours).toFixed(2)]);
 
       // Create worksheet from data
       const worksheet = XLSX.utils.aoa_to_sheet(data);
