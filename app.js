@@ -808,24 +808,57 @@ const PLXCrescentCompare = () => {
       const workbook = XLSX.utils.book_new();
 
       // Create header row
-      const headers = ['Dept', 'EID', 'Name', 'Reg Hours', 'OT Hours'];
+      const headers = ['Dept', 'EID', 'Name', 'Hours'];
       const data = [headers];
 
-      // Add data rows
-      editedPlxRows.forEach(row => {
-        // Calculate Reg Hours (assume first 8 hours are regular, rest is OT)
-        const totalHours = row.Total_Hours || 0;
-        const regHours = Math.min(totalHours, 8);
-        const otHours = Math.max(totalHours - 8, 0);
+      // Separate Direct and Indirect rows
+      const directRows = editedPlxRows.filter(row => {
+        const dept = row.Department || '';
+        return !dept.includes('-251-221');
+      });
 
+      const indirectRows = editedPlxRows.filter(row => {
+        const dept = row.Department || '';
+        return dept.includes('-251-221');
+      });
+
+      // Add Direct rows
+      directRows.forEach(row => {
         data.push([
           row.Department || '',
           row.EID || '',
           row.Name || '',
-          regHours.toFixed(2),
-          otHours.toFixed(2)
+          (row.Total_Hours || 0).toFixed(2)
         ]);
       });
+
+      // Calculate Direct summary
+      const directHours = directRows.reduce((sum, row) => sum + (row.Total_Hours || 0), 0);
+
+      // Add blank row
+      data.push([]);
+
+      // Add Indirect rows
+      indirectRows.forEach(row => {
+        data.push([
+          row.Department || '',
+          row.EID || '',
+          row.Name || '',
+          (row.Total_Hours || 0).toFixed(2)
+        ]);
+      });
+
+      // Calculate Indirect summary
+      const indirectHours = indirectRows.reduce((sum, row) => sum + (row.Total_Hours || 0), 0);
+
+      // Add blank row before summary
+      data.push([]);
+
+      // Add summary rows
+      data.push(['Summary', '', '', '']);
+      data.push(['Direct Associates:', directRows.length, 'Direct Hours:', directHours.toFixed(2)]);
+      data.push(['Indirect Associates:', indirectRows.length, 'Indirect Hours:', indirectHours.toFixed(2)]);
+      data.push(['Total Associates:', directRows.length + indirectRows.length, 'Total Hours:', (directHours + indirectHours).toFixed(2)]);
 
       // Create worksheet from data
       const worksheet = XLSX.utils.aoa_to_sheet(data);
@@ -835,8 +868,7 @@ const PLXCrescentCompare = () => {
         { wch: 20 },  // Dept
         { wch: 12 },  // EID
         { wch: 25 },  // Name
-        { wch: 12 },  // Reg Hours
-        { wch: 12 }   // OT Hours
+        { wch: 12 }   // Hours
       ];
 
       // Add worksheet to workbook
@@ -1035,10 +1067,10 @@ const PLXCrescentCompare = () => {
         </div>
       )}
 
-      {/* Detail Tables Side by Side */}
+      {/* Detail Tables */}
       {crescentProcessed.length > 0 && editedPlxRows.length > 0 && (
         <div className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 gap-6">
             {/* Crescent Detail */}
             <div className="bg-white rounded-xl shadow-lg border-2 border-gray-200">
               <button
