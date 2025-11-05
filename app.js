@@ -208,10 +208,20 @@ const PLXCrescentCompare = () => {
           const clockOutKey = Object.keys(row).find(k => k.toLowerCase() === 'clock out time');
 
           const badge = badgeKey ? row[badgeKey] : '';
-          const eidMatch = badge.match(/PLX-(\d+)-/i);
-          if (!eidMatch) return;
+          if (!badge || !badge.toString().toLowerCase().includes('plx')) return;
 
-          const eid = eidMatch[1];
+          // Try to match numeric EID format first: PLX-(\d+)-
+          const numericEidMatch = badge.match(/PLX-(\d+)-/i);
+
+          // If no numeric EID, try to match name-based format: PLX-{name} or plx-{name}
+          const nameBasedMatch = !numericEidMatch && badge.match(/PLX-([A-Za-z]+)/i);
+
+          if (!numericEidMatch && !nameBasedMatch) return;
+
+          // Use numeric EID if available, otherwise use name-based identifier
+          const eid = numericEidMatch ? numericEidMatch[1] : `NAME_${nameBasedMatch[1].toUpperCase()}`;
+          const isNameBased = !numericEidMatch;
+
           const hours = parseFloat(hoursKey ? row[hoursKey] : 0) || 0;
           const line = lineKey ? row[lineKey] : '';
 
@@ -224,7 +234,9 @@ const PLXCrescentCompare = () => {
               Direct_Hours: 0,
               Indirect_Hours: 0,
               ClockIn: '',
-              ClockOut: ''
+              ClockOut: '',
+              _isNameBased: isNameBased,
+              _extractedName: isNameBased ? nameBasedMatch[1] : null
             };
           }
 
@@ -257,7 +269,9 @@ const PLXCrescentCompare = () => {
           Direct_Hours: Math.round(record.Direct_Hours * 100) / 100,
           Indirect_Hours: Math.round(record.Indirect_Hours * 100) / 100,
           ClockIn: record.ClockIn,
-          ClockOut: record.ClockOut
+          ClockOut: record.ClockOut,
+          _isNameBased: record._isNameBased || false,
+          _extractedName: record._extractedName || null
         }));
 
         setCrescentData(records);
@@ -493,7 +507,47 @@ const PLXCrescentCompare = () => {
   // Smart recommendations
   const recommendations = useMemo(() => {
     const recs = [];
-    
+
+    // First, check for name-based badges that need matching
+    editedCrescentRows.forEach(crescentRow => {
+      if (crescentRow._isNameBased && crescentRow._extractedName) {
+        const extractedName = crescentRow._extractedName.toLowerCase();
+
+        // Find PLX records with matching or similar names
+        plxForComparison.forEach(plxRecord => {
+          const plxLastName = plxRecord.Name.split(' ').pop()?.toLowerCase() || '';
+          const plxFirstName = plxRecord.Name.split(' ')[0]?.toLowerCase() || '';
+          const plxFullName = plxRecord.Name.toLowerCase();
+
+          // Check if extracted name matches last name, first name, or is contained in full name
+          if (plxLastName.includes(extractedName) ||
+              extractedName.includes(plxLastName) ||
+              plxFirstName.includes(extractedName) ||
+              extractedName.includes(plxFirstName) ||
+              plxFullName.includes(extractedName)) {
+
+            // Check if this recommendation doesn't already exist
+            const alreadyAdded = recs.some(r =>
+              r.crescentEID === crescentRow.EID && r.plxEID === plxRecord.EID
+            );
+
+            if (!alreadyAdded) {
+              recs.push({
+                type: 'Name-Based Badge',
+                crescentEID: crescentRow.EID,
+                crescentBadge: crescentRow.FullBadges,
+                crescentHours: crescentRow.Total_Hours,
+                plxEID: plxRecord.EID,
+                plxName: plxRecord.Name,
+                plxHours: plxRecord.Total_Hours,
+                reason: `Badge "${crescentRow.FullBadges}" contains name "${extractedName.toUpperCase()}" matching "${plxRecord.Name}"`
+              });
+            }
+          }
+        });
+      }
+    });
+
     mismatches.forEach(mismatch => {
       // Only look at records missing from one side
       if (mismatch.Total_Hours_Crescent === 0 || mismatch.Total_Hours_PLX === 0) {
@@ -703,22 +757,37 @@ const PLXCrescentCompare = () => {
     // Update Crescent EID to match PLX EID
     const updatedRows = editedCrescentRows.map(row => {
       if (row.EID === rec.crescentEID) {
-        return {
-          ...row,
-          EID: rec.plxEID,
-          FullBadges: row.FullBadges.replace(
-            new RegExp(`PLX-${rec.crescentEID}-`, 'i'),
-            `PLX-${rec.plxEID}-`
-          ),
-          Badge_Last3: row.FullBadges.replace(
-            new RegExp(`PLX-${rec.crescentEID}-`, 'i'),
-            `PLX-${rec.plxEID}-`
-          ).slice(-3)
-        };
+        // For name-based badges, we need to reconstruct the badge with the correct EID
+        if (row._isNameBased) {
+          // Extract the badge letters from the original badge
+          const badgeLetters = row.FullBadges.match(/[A-Za-z]+$/)?.[0] || 'XXX';
+          return {
+            ...row,
+            EID: rec.plxEID,
+            FullBadges: `PLX-${rec.plxEID}-${badgeLetters}`,
+            Badge_Last3: badgeLetters.slice(-3),
+            _isNameBased: false,
+            _extractedName: null
+          };
+        } else {
+          // For numeric EID badges, use the original logic
+          return {
+            ...row,
+            EID: rec.plxEID,
+            FullBadges: row.FullBadges.replace(
+              new RegExp(`PLX-${rec.crescentEID}-`, 'i'),
+              `PLX-${rec.plxEID}-`
+            ),
+            Badge_Last3: row.FullBadges.replace(
+              new RegExp(`PLX-${rec.crescentEID}-`, 'i'),
+              `PLX-${rec.plxEID}-`
+            ).slice(-3)
+          };
+        }
       }
       return row;
     });
-    
+
     setEditedCrescentRows(updatedRows);
     setRefreshTrigger(prev => prev + 1);
   };
@@ -897,6 +966,83 @@ const PLXCrescentCompare = () => {
         { wch: 12 }   // Hours
       ];
 
+      // Define border style
+      const borderStyle = {
+        top: { style: 'thin', color: { rgb: '000000' } },
+        bottom: { style: 'thin', color: { rgb: '000000' } },
+        left: { style: 'thin', color: { rgb: '000000' } },
+        right: { style: 'thin', color: { rgb: '000000' } }
+      };
+
+      // Define header style
+      const headerStyle = {
+        font: { bold: true, color: { rgb: 'FFFFFF' } },
+        fill: { fgColor: { rgb: '4472C4' } },
+        alignment: { horizontal: 'center', vertical: 'center' },
+        border: borderStyle
+      };
+
+      // Define data cell style
+      const dataCellStyle = {
+        border: borderStyle,
+        alignment: { vertical: 'center' }
+      };
+
+      // Define summary header style
+      const summaryHeaderStyle = {
+        font: { bold: true, color: { rgb: 'FFFFFF' } },
+        fill: { fgColor: { rgb: '70AD47' } },
+        alignment: { horizontal: 'center', vertical: 'center' },
+        border: borderStyle
+      };
+
+      // Define summary cell style
+      const summaryCellStyle = {
+        font: { bold: true },
+        fill: { fgColor: { rgb: 'E2EFDA' } },
+        border: borderStyle,
+        alignment: { vertical: 'center' }
+      };
+
+      // Apply styles to all cells
+      const range = XLSX.utils.decode_range(worksheet['!ref']);
+
+      // Find summary row
+      const summaryRowIdx = data.findIndex(row => row[0] === 'Summary');
+
+      for (let R = range.s.r; R <= range.e.r; R++) {
+        for (let C = range.s.c; C <= range.e.c; C++) {
+          const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
+          if (!worksheet[cellAddress]) continue;
+
+          // Header row (first row)
+          if (R === 0) {
+            worksheet[cellAddress].s = headerStyle;
+          }
+          // Summary section
+          else if (R >= summaryRowIdx && summaryRowIdx !== -1) {
+            if (R === summaryRowIdx) {
+              worksheet[cellAddress].s = summaryHeaderStyle;
+            } else {
+              worksheet[cellAddress].s = summaryCellStyle;
+            }
+          }
+          // Data rows
+          else if (data[R] && data[R].length > 0) {
+            worksheet[cellAddress].s = dataCellStyle;
+
+            // Right-align hours column
+            if (C === 3 && !isNaN(parseFloat(data[R][C]))) {
+              worksheet[cellAddress].s = {
+                ...dataCellStyle,
+                alignment: { horizontal: 'right', vertical: 'center' },
+                numFmt: '0.00'
+              };
+            }
+          }
+        }
+      }
+
       // Add worksheet to workbook
       XLSX.utils.book_append_sheet(workbook, worksheet, 'Revised PLX');
 
@@ -919,7 +1065,7 @@ const PLXCrescentCompare = () => {
             <p className="text-gray-600">Compare ProLogistix and Crescent reports to identify discrepancies</p>
           </div>
           <div className="text-right">
-            <span className="text-sm text-gray-500 font-mono">v1.3.0</span>
+            <span className="text-sm text-gray-500 font-mono">v1.4.0</span>
           </div>
         </div>
       </div>
@@ -1206,7 +1352,18 @@ const PLXCrescentCompare = () => {
                               />
                             </td>
                             <td className="p-2">
-                              <span className="text-xs px-2 py-1">{row.Lines}</span>
+                              <input
+                                type="text"
+                                value={row.Lines}
+                                onChange={(e) => {
+                                  const newRows = [...editedCrescentRows];
+                                  newRows[originalIdx].Lines = e.target.value;
+                                  setEditedCrescentRows(newRows);
+                                }}
+                                className="w-full border border-gray-300 rounded px-2 py-1 text-xs focus:border-indigo-500 focus:outline-none"
+                                placeholder="e.g., LINEG, LINEK"
+                                disabled={isSplit}
+                              />
                             </td>
                             <td className="p-2 text-right">
                               <span className="text-sm px-2 py-1">{row.Total_Hours.toFixed(2)}</span>
@@ -1464,6 +1621,7 @@ const PLXCrescentCompare = () => {
                       <tr key={idx} className="border-t border-yellow-200 hover:bg-yellow-50/50">
                         <td className="p-3">
                           <span className={`px-2 py-1 rounded text-xs font-medium ${
+                            rec.type === 'Name-Based Badge' ? 'bg-indigo-100 text-indigo-800' :
                             rec.type === 'Name Match' ? 'bg-purple-100 text-purple-800' :
                             rec.type === 'EID Typo' ? 'bg-orange-100 text-orange-800' :
                             rec.type === 'Multiple Digits' ? 'bg-pink-100 text-pink-800' :
