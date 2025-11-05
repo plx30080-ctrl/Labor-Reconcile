@@ -811,70 +811,76 @@ const PLXCrescentCompare = () => {
       const headers = ['Dept', 'EID', 'Name', 'Hours'];
       const data = [headers];
 
-      // Separate Direct and Indirect rows based on actual hours, not department
+      // Separate Direct and Indirect rows based on actual hours values
       const directRows = [];
       const indirectRows = [];
 
       editedPlxRows.forEach(row => {
-        const hasDirectHours = (row.Direct_Hours || 0) > 0;
-        const hasIndirectHours = (row.Indirect_Hours || 0) > 0;
+        const directHours = parseFloat(row.Direct_Hours) || 0;
+        const indirectHours = parseFloat(row.Indirect_Hours) || 0;
 
-        // Add to Direct if they have Direct hours
-        if (hasDirectHours) {
+        // Add to Direct section if they have Direct hours
+        if (directHours > 0) {
+          // Use a Direct department code
+          const directDept = row.Department ?
+            row.Department.replace(/-251-221/, '-251-211') : '004-251-211';
+
           directRows.push({
-            Department: row.Department && row.Department.includes('-251-221') ?
-              row.Department.replace('-251-221', '-251-211') : (row.Department || '004-251-211'),
-            EID: row.EID,
-            Name: row.Name,
-            Hours: row.Direct_Hours
+            Department: directDept,
+            EID: row.EID || '',
+            Name: row.Name || '',
+            Hours: directHours
           });
         }
 
-        // Add to Indirect if they have Indirect hours
-        if (hasIndirectHours) {
+        // Add to Indirect section if they have Indirect hours
+        if (indirectHours > 0) {
+          // Use an Indirect department code
+          const indirectDept = row.Department ?
+            row.Department.replace(/-251-211/, '-251-221') : '005-251-221';
+
           indirectRows.push({
-            Department: row.Department && !row.Department.includes('-251-221') ?
-              row.Department.replace('-251-211', '-251-221') : (row.Department || '005-251-221'),
-            EID: row.EID,
-            Name: row.Name,
-            Hours: row.Indirect_Hours
+            Department: indirectDept,
+            EID: row.EID || '',
+            Name: row.Name || '',
+            Hours: indirectHours
           });
         }
       });
 
-      // Add Direct rows
+      // Add Direct section
       directRows.forEach(row => {
         data.push([
-          row.Department || '',
-          row.EID || '',
-          row.Name || '',
-          (row.Hours || 0).toFixed(2)
+          row.Department,
+          row.EID,
+          row.Name,
+          row.Hours.toFixed(2)
         ]);
       });
 
       // Calculate Direct summary
-      const directHours = directRows.reduce((sum, row) => sum + (row.Hours || 0), 0);
+      const directHours = directRows.reduce((sum, row) => sum + row.Hours, 0);
 
-      // Add blank row
+      // Add blank row separator
       data.push([]);
 
-      // Add Indirect rows
+      // Add Indirect section
       indirectRows.forEach(row => {
         data.push([
-          row.Department || '',
-          row.EID || '',
-          row.Name || '',
-          (row.Hours || 0).toFixed(2)
+          row.Department,
+          row.EID,
+          row.Name,
+          row.Hours.toFixed(2)
         ]);
       });
 
       // Calculate Indirect summary
-      const indirectHours = indirectRows.reduce((sum, row) => sum + (row.Hours || 0), 0);
+      const indirectHours = indirectRows.reduce((sum, row) => sum + row.Hours, 0);
 
       // Add blank row before summary
       data.push([]);
 
-      // Add summary rows
+      // Add summary section
       data.push(['Summary', '', '', '']);
       data.push(['Direct Associates:', directRows.length, 'Direct Hours:', directHours.toFixed(2)]);
       data.push(['Indirect Associates:', indirectRows.length, 'Indirect Hours:', indirectHours.toFixed(2)]);
@@ -913,7 +919,7 @@ const PLXCrescentCompare = () => {
             <p className="text-gray-600">Compare ProLogistix and Crescent reports to identify discrepancies</p>
           </div>
           <div className="text-right">
-            <span className="text-sm text-gray-500 font-mono">v1.2.0</span>
+            <span className="text-sm text-gray-500 font-mono">v1.3.0</span>
           </div>
         </div>
       </div>
