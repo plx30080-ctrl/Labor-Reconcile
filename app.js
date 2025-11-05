@@ -798,66 +798,53 @@ const PLXCrescentCompare = () => {
   };
 
   const handleExportRevisedPlx = () => {
-    if (!originalPlxWorkbook || !plxData) {
+    if (!plxData || editedPlxRows.length === 0) {
       alert('Please upload a PLX file first');
       return;
     }
 
     try {
-      // Clone the original workbook
+      // Create new formatted workbook
       const workbook = XLSX.utils.book_new();
-      const originalSheet = originalPlxWorkbook.Sheets[originalPlxWorkbook.SheetNames[0]];
-      const jsonData = XLSX.utils.sheet_to_json(originalSheet, { header: 1 });
 
-      // Create a map of edited hours by EID and day
-      const editedHoursMap = {};
+      // Create header row
+      const headers = ['Dept', 'EID', 'Name', 'Reg Hours', 'OT Hours'];
+      const data = [headers];
+
+      // Add data rows
       editedPlxRows.forEach(row => {
-        if (!editedHoursMap[row.EID]) {
-          editedHoursMap[row.EID] = row;
-        }
+        // Calculate Reg Hours (assume first 8 hours are regular, rest is OT)
+        const totalHours = row.Total_Hours || 0;
+        const regHours = Math.min(totalHours, 8);
+        const otHours = Math.max(totalHours - 8, 0);
+
+        data.push([
+          row.Department || '',
+          row.EID || '',
+          row.Name || '',
+          regHours.toFixed(2),
+          otHours.toFixed(2)
+        ]);
       });
 
-      // Find the original records for mapping
-      plxData.forEach(record => {
-        const editedRow = editedHoursMap[record.EID];
-        if (!editedRow) return;
+      // Create worksheet from data
+      const worksheet = XLSX.utils.aoa_to_sheet(data);
 
-        const rowIdx = record.rowIndex;
+      // Set column widths for better formatting
+      worksheet['!cols'] = [
+        { wch: 20 },  // Dept
+        { wch: 12 },  // EID
+        { wch: 25 },  // Name
+        { wch: 12 },  // Reg Hours
+        { wch: 12 }   // OT Hours
+      ];
 
-        // Update hours for each day column
-        Object.entries(record.columnMapping).forEach(([colIdx, info]) => {
-          if (info.day === selectedDay) {
-            const originalValue = parseFloat(jsonData[rowIdx][colIdx]) || 0;
-            // Calculate the total hours for this day from the original
-            let dayTotal = 0;
-            Object.entries(record.columnMapping).forEach(([cIdx, cInfo]) => {
-              if (cInfo.day === selectedDay) {
-                dayTotal += parseFloat(jsonData[rowIdx][cIdx]) || 0;
-              }
-            });
-
-            // Calculate the ratio to distribute new hours proportionally
-            if (dayTotal > 0) {
-              const ratio = originalValue / dayTotal;
-              jsonData[rowIdx][colIdx] = editedRow.Total_Hours * ratio;
-            } else {
-              // If no original hours, put all hours in first column for this day
-              const firstColForDay = Object.entries(record.columnMapping)
-                .find(([, cInfo]) => cInfo.day === selectedDay);
-              if (firstColForDay && firstColForDay[0] == colIdx) {
-                jsonData[rowIdx][colIdx] = editedRow.Total_Hours;
-              }
-            }
-          }
-        });
-      });
-
-      // Create new sheet from updated data
-      const newSheet = XLSX.utils.aoa_to_sheet(jsonData);
-      XLSX.utils.book_append_sheet(workbook, newSheet, 'Sheet1');
+      // Add worksheet to workbook
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Revised PLX');
 
       // Export the file
-      XLSX.writeFile(workbook, `Revised_PLX_${selectedDay}_${selectedShift.replace(' ', '_')}.xlsx`);
+      const fileName = `Revised_PLX_${selectedDay}_${selectedShift.replace(' ', '_')}_${new Date().toISOString().split('T')[0]}.xlsx`;
+      XLSX.writeFile(workbook, fileName);
       alert('Revised PLX file exported successfully!');
     } catch (error) {
       console.error('Error exporting PLX file:', error);
@@ -964,7 +951,7 @@ const PLXCrescentCompare = () => {
               </button>
               <button
                 onClick={handleExportRevisedPlx}
-                disabled={!originalPlxWorkbook || !plxData}
+                disabled={!plxData || editedPlxRows.length === 0}
                 className="flex-1 px-6 py-3 bg-gradient-to-r from-green-500 to-teal-600 text-white rounded-lg hover:from-green-600 hover:to-teal-700 font-semibold shadow-md hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Export Revised PLX
@@ -1274,6 +1261,7 @@ const PLXCrescentCompare = () => {
                               Name <ArrowUpDown size={14} />
                             </button>
                           </th>
+                          <th className="p-3 text-left font-semibold">Dept</th>
                           <th className="p-3 text-right font-semibold">Total</th>
                           <th className="p-3 text-right font-semibold">Direct</th>
                           <th className="p-3 text-right font-semibold">Indirect</th>
@@ -1312,6 +1300,9 @@ const PLXCrescentCompare = () => {
                                 className="w-full border border-gray-300 rounded px-2 py-1 focus:border-blue-500 focus:outline-none"
                                 disabled={isSplit}
                               />
+                            </td>
+                            <td className="p-2">
+                              <span className="text-xs px-2 py-1" title={row.Department}>{row.Department || '-'}</span>
                             </td>
                             <td className="p-2 text-right">
                               <span className="text-sm px-2 py-1">{row.Total_Hours.toFixed(2)}</span>
