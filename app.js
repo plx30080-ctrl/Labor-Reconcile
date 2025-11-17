@@ -735,10 +735,10 @@ const PLXCrescentCompare = () => {
       return rounded % 1 === 0 ? rounded.toFixed(0) : rounded.toString();
     };
 
-    // Helper function to extract PLX number (e.g., "PLX-21057999-AND" -> "21057999-AND")
-    const extractPlxNumber = (badge) => {
-      const match = badge.match(/PLX-(.+)/i);
-      return match ? match[1] : badge;
+    // Helper function to extract PLX number (e.g., "PLX-21057999-AND" -> "PLX-21057999-AND")
+    const extractPlxBadge = (badge) => {
+      // Return the full badge, not just the part after PLX-
+      return badge || '';
     };
 
     return checkedErrors.map((row, index) => {
@@ -747,9 +747,9 @@ const PLXCrescentCompare = () => {
       const formattedLines = formatLines(row.Lines);
       const plxHours = formatHours(row.Total_Hours_PLX);
       const crescentHours = formatHours(row.Total_Hours_Crescent);
-      const plxNumber = extractPlxNumber(badge);
+      const plxBadge = extractPlxBadge(badge);
 
-      return `${index + 1}. ${formattedName} – worked on ${formattedLines} for ${plxHours} hours, not ${crescentHours} hours\nPLX: ${plxNumber}`;
+      return `${index + 1}. ${formattedName} – worked on ${formattedLines} for ${plxHours} hours, not ${crescentHours} hours\n${plxBadge}`;
     }).join('\n\n');
   }, [mismatches, crescentErrors]);
 
@@ -792,9 +792,40 @@ const PLXCrescentCompare = () => {
     setRefreshTrigger(prev => prev + 1);
   };
 
-  const handleCopyReport = () => {
-    navigator.clipboard.writeText(errorReportText);
-    alert('Error report copied to clipboard!');
+  const handleCopyReport = async () => {
+    try {
+      // Try using the modern clipboard API first
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(errorReportText);
+        alert('Error report copied to clipboard!');
+      } else {
+        // Fallback for older browsers or unsecure contexts
+        const textArea = document.createElement('textarea');
+        textArea.value = errorReportText;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+
+        try {
+          const successful = document.execCommand('copy');
+          if (successful) {
+            alert('Error report copied to clipboard!');
+          } else {
+            alert('Failed to copy. Please manually select and copy the text.');
+          }
+        } catch (err) {
+          alert('Failed to copy. Please manually select and copy the text.');
+        }
+
+        document.body.removeChild(textArea);
+      }
+    } catch (err) {
+      console.error('Failed to copy text: ', err);
+      alert('Failed to copy. Please manually select and copy the text.');
+    }
   };
 
   const handlePlxSync = (eid) => {
