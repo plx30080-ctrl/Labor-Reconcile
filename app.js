@@ -209,22 +209,25 @@ const PLXCrescentCompare = () => {
 
           const badge = badgeKey ? row[badgeKey] : '';
 
-          // Skip rows without badges or without PLX prefix
-          if (!badge || (typeof badge !== 'string' && typeof badge !== 'number')) return;
-          const badgeStr = badge.toString();
-          if (!badgeStr.toLowerCase().includes('plx')) return;
+          // First try the standard numeric EID format: PLX-(\d+)-
+          let eidMatch = badge.match(/PLX-(\d+)-/i);
+          let eid = null;
+          let isNameBased = false;
 
-          // Try to match numeric EID format first: PLX-(\d+)-
-          const numericEidMatch = badgeStr.match(/PLX-(\d+)-/i);
+          if (eidMatch) {
+            // Standard format found
+            eid = eidMatch[1];
+          } else if (badge && badge.toString().toLowerCase().includes('plx')) {
+            // Check for name-based format: PLX-{name} (no numeric EID)
+            const nameMatch = badge.match(/PLX-([A-Za-z]+)/i);
+            if (nameMatch) {
+              eid = `NAME_${nameMatch[1].toUpperCase()}`;
+              isNameBased = true;
+            }
+          }
 
-          // If no numeric EID, try to match name-based format: PLX-{name} or plx-{name}
-          const nameBasedMatch = !numericEidMatch && badgeStr.match(/PLX-([A-Za-z]+)/i);
-
-          if (!numericEidMatch && !nameBasedMatch) return;
-
-          // Use numeric EID if available, otherwise use name-based identifier
-          const eid = numericEidMatch ? numericEidMatch[1] : `NAME_${nameBasedMatch[1].toUpperCase()}`;
-          const isNameBased = !numericEidMatch;
+          // Skip if no valid badge format found
+          if (!eid) return;
 
           const hours = parseFloat(hoursKey ? row[hoursKey] : 0) || 0;
           const line = lineKey ? row[lineKey] : '';
@@ -240,11 +243,11 @@ const PLXCrescentCompare = () => {
               ClockIn: '',
               ClockOut: '',
               _isNameBased: isNameBased,
-              _extractedName: isNameBased ? nameBasedMatch[1] : null
+              _extractedName: isNameBased ? badge.match(/PLX-([A-Za-z]+)/i)[1] : null
             };
           }
 
-          aggregated[eid].Badges.add(badgeStr);
+          aggregated[eid].Badges.add(badge.toString());
           aggregated[eid].Lines.add(line);
           aggregated[eid].Total_Hours += hours;
 
