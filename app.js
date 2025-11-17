@@ -208,13 +208,17 @@ const PLXCrescentCompare = () => {
           const clockOutKey = Object.keys(row).find(k => k.toLowerCase() === 'clock out time');
 
           const badge = badgeKey ? row[badgeKey] : '';
-          if (!badge || !badge.toString().toLowerCase().includes('plx')) return;
+
+          // Skip rows without badges or without PLX prefix
+          if (!badge || (typeof badge !== 'string' && typeof badge !== 'number')) return;
+          const badgeStr = badge.toString();
+          if (!badgeStr.toLowerCase().includes('plx')) return;
 
           // Try to match numeric EID format first: PLX-(\d+)-
-          const numericEidMatch = badge.match(/PLX-(\d+)-/i);
+          const numericEidMatch = badgeStr.match(/PLX-(\d+)-/i);
 
           // If no numeric EID, try to match name-based format: PLX-{name} or plx-{name}
-          const nameBasedMatch = !numericEidMatch && badge.match(/PLX-([A-Za-z]+)/i);
+          const nameBasedMatch = !numericEidMatch && badgeStr.match(/PLX-([A-Za-z]+)/i);
 
           if (!numericEidMatch && !nameBasedMatch) return;
 
@@ -240,7 +244,7 @@ const PLXCrescentCompare = () => {
             };
           }
 
-          aggregated[eid].Badges.add(badge);
+          aggregated[eid].Badges.add(badgeStr);
           aggregated[eid].Lines.add(line);
           aggregated[eid].Total_Hours += hours;
 
@@ -515,6 +519,7 @@ const PLXCrescentCompare = () => {
 
         // Find PLX records with matching or similar names
         plxForComparison.forEach(plxRecord => {
+          if (!plxRecord.Name) return; // Skip if no name
           const plxLastName = plxRecord.Name.split(' ').pop()?.toLowerCase() || '';
           const plxFirstName = plxRecord.Name.split(' ')[0]?.toLowerCase() || '';
           const plxFullName = plxRecord.Name.toLowerCase();
@@ -671,7 +676,7 @@ const PLXCrescentCompare = () => {
     });
     
     return recs;
-  }, [mismatches, plxForComparison]);
+  }, [mismatches, plxForComparison, editedCrescentRows]);
 
   const totalCrescent = useMemo(() => {
     return crescentProcessed.reduce((sum, r) => sum + (parseFloat(r.Total_Hours) || 0), 0);
