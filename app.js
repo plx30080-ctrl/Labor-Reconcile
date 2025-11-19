@@ -1106,7 +1106,7 @@ const PLXCrescentCompare = () => {
             <p className="text-gray-600">Compare ProLogistix and Crescent reports to identify discrepancies</p>
           </div>
           <div className="text-right">
-            <span className="text-sm text-gray-500 font-mono">v1.4.1</span>
+            <span className="text-sm text-gray-500 font-mono">v1.4.2</span>
           </div>
         </div>
       </div>
@@ -1364,7 +1364,20 @@ const PLXCrescentCompare = () => {
                                 value={row.EID}
                                 onChange={(e) => {
                                   const newRows = [...editedCrescentRows];
-                                  newRows[originalIdx].EID = e.target.value;
+                                  const newEID = e.target.value;
+                                  newRows[originalIdx].EID = newEID;
+
+                                  // Reconstruct FullBadges when EID changes
+                                  if (newEID && newRows[originalIdx].Badge_Last3) {
+                                    // If EID starts with NAME_ or UNRECOGNIZED_, use it as-is for the badge
+                                    if (newEID.startsWith('NAME_') || newEID.startsWith('UNRECOGNIZED_')) {
+                                      newRows[originalIdx].FullBadges = `PLX-${newRows[originalIdx].Badge_Last3}`;
+                                    } else {
+                                      // Standard numeric EID format
+                                      newRows[originalIdx].FullBadges = `PLX-${newEID}-${newRows[originalIdx].Badge_Last3}`;
+                                    }
+                                  }
+
                                   setEditedCrescentRows(newRows);
                                 }}
                                 className="w-full border border-gray-300 rounded px-2 py-1 focus:border-indigo-500 focus:outline-none"
@@ -1379,10 +1392,22 @@ const PLXCrescentCompare = () => {
                                   const newRows = [...editedCrescentRows];
                                   const newLast3 = e.target.value.toUpperCase();
                                   newRows[originalIdx].Badge_Last3 = newLast3;
-                                  if (newRows[originalIdx].FullBadges) {
+
+                                  // Construct FullBadges from EID and Badge_Last3
+                                  if (newRows[originalIdx].EID && newLast3) {
+                                    // If EID starts with NAME_ or UNRECOGNIZED_, use it as-is for the badge
+                                    if (newRows[originalIdx].EID.startsWith('NAME_') || newRows[originalIdx].EID.startsWith('UNRECOGNIZED_')) {
+                                      newRows[originalIdx].FullBadges = `PLX-${newLast3}`;
+                                    } else {
+                                      // Standard numeric EID format
+                                      newRows[originalIdx].FullBadges = `PLX-${newRows[originalIdx].EID}-${newLast3}`;
+                                    }
+                                  } else if (newRows[originalIdx].FullBadges) {
+                                    // Fallback: update existing FullBadges by replacing last 3 chars
                                     const badgeBase = newRows[originalIdx].FullBadges.slice(0, -3);
                                     newRows[originalIdx].FullBadges = badgeBase + newLast3;
                                   }
+
                                   setEditedCrescentRows(newRows);
                                 }}
                                 title={row.FullBadges}
