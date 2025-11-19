@@ -200,6 +200,8 @@ const PLXCrescentCompare = () => {
         }
 
         const aggregated = {};
+        let unrecognizedBadgeCounter = 0;
+
         jsonData.forEach(row => {
           const badgeKey = Object.keys(row).find(k => k.toLowerCase() === 'badge');
           const hoursKey = Object.keys(row).find(k => k.toLowerCase() === 'payable hours');
@@ -209,25 +211,36 @@ const PLXCrescentCompare = () => {
 
           const badge = badgeKey ? row[badgeKey] : '';
 
+          // Skip rows with no badge at all
+          if (!badge) return;
+
           // First try the standard numeric EID format: PLX-(\d+)-
-          let eidMatch = badge.match(/PLX-(\d+)-/i);
+          let eidMatch = badge.toString().match(/PLX-(\d+)-/i);
           let eid = null;
           let isNameBased = false;
+          let isUnrecognized = false;
 
           if (eidMatch) {
-            // Standard format found
+            // Standard format found (e.g., PLX-21057999-AND)
             eid = eidMatch[1];
-          } else if (badge && badge.toString().toLowerCase().includes('plx')) {
-            // Check for name-based format: PLX-{name} (no numeric EID)
-            const nameMatch = badge.match(/PLX-([A-Za-z]+)/i);
+          } else if (badge.toString().toLowerCase().includes('plx')) {
+            // Try name-based format: PLX-{name} or plx-{name} (including with spaces like "plx- lastname")
+            const nameMatch = badge.toString().match(/PLX-?\s*([A-Za-z]+)/i);
             if (nameMatch) {
               eid = `NAME_${nameMatch[1].toUpperCase()}`;
               isNameBased = true;
+            } else {
+              // Badge contains PLX but doesn't match any known format - still capture it
+              unrecognizedBadgeCounter++;
+              eid = `UNRECOGNIZED_${unrecognizedBadgeCounter}`;
+              isUnrecognized = true;
             }
+          } else {
+            // Badge doesn't contain PLX at all - still capture it
+            unrecognizedBadgeCounter++;
+            eid = `UNRECOGNIZED_${unrecognizedBadgeCounter}`;
+            isUnrecognized = true;
           }
-
-          // Skip if no valid badge format found
-          if (!eid) return;
 
           const hours = parseFloat(hoursKey ? row[hoursKey] : 0) || 0;
           const line = lineKey ? row[lineKey] : '';
@@ -243,7 +256,8 @@ const PLXCrescentCompare = () => {
               ClockIn: '',
               ClockOut: '',
               _isNameBased: isNameBased,
-              _extractedName: isNameBased ? badge.match(/PLX-([A-Za-z]+)/i)[1] : null
+              _isUnrecognized: isUnrecognized,
+              _extractedName: isNameBased && !isUnrecognized ? badge.toString().match(/PLX-?\s*([A-Za-z]+)/i)[1] : null
             };
           }
 
@@ -278,6 +292,7 @@ const PLXCrescentCompare = () => {
           ClockIn: record.ClockIn,
           ClockOut: record.ClockOut,
           _isNameBased: record._isNameBased || false,
+          _isUnrecognized: record._isUnrecognized || false,
           _extractedName: record._extractedName || null
         }));
 
@@ -743,21 +758,17 @@ const PLXCrescentCompare = () => {
       return rounded % 1 === 0 ? rounded.toFixed(0) : rounded.toString();
     };
 
-    // Helper function to extract PLX number (e.g., "PLX-21057999-AND" -> "PLX-21057999-AND")
-    const extractPlxBadge = (badge) => {
-      // Return the full badge, not just the part after PLX-
-      return badge || '';
-    };
-
     return checkedErrors.map((row, index) => {
-      const badge = row.FullBadges.split(', ')[0] || '';
+      const badge = row.FullBadges ? row.FullBadges.split(', ')[0] : '';
       const formattedName = formatName(row.Name);
       const formattedLines = formatLines(row.Lines);
       const plxHours = formatHours(row.Total_Hours_PLX);
       const crescentHours = formatHours(row.Total_Hours_Crescent);
-      const plxBadge = extractPlxBadge(badge);
 
-      return `${index + 1}. ${formattedName} – worked on ${formattedLines} for ${plxHours} hours, not ${crescentHours} hours\n${plxBadge}`;
+      // Only include badge line if there's actually a badge
+      const badgeLine = badge ? `\n${badge}` : '';
+
+      return `${index + 1}. ${formattedName} – worked on ${formattedLines} for ${plxHours} hours, not ${crescentHours} hours${badgeLine}`;
     }).join('\n\n');
   }, [mismatches, crescentErrors]);
 
@@ -800,37 +811,28 @@ const PLXCrescentCompare = () => {
     setRefreshTrigger(prev => prev + 1);
   };
 
-  const handleCopyReport = async () => {
+  const handleCopyReport = () => {
+    // Use the fallback method which is more reliable
+    const textArea = document.createElement('textarea');
+    textArea.value = errorReportText;
+    textArea.style.position = 'fixed';
+    textArea.style.left = '-999999px';
+    textArea.style.top = '-999999px';
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+
     try {
-      // Try using the modern clipboard API first
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        await navigator.clipboard.writeText(errorReportText);
+      const successful = document.execCommand('copy');
+      document.body.removeChild(textArea);
+
+      if (successful) {
         alert('Error report copied to clipboard!');
       } else {
-        // Fallback for older browsers or unsecure contexts
-        const textArea = document.createElement('textarea');
-        textArea.value = errorReportText;
-        textArea.style.position = 'fixed';
-        textArea.style.left = '-999999px';
-        textArea.style.top = '-999999px';
-        document.body.appendChild(textArea);
-        textArea.focus();
-        textArea.select();
-
-        try {
-          const successful = document.execCommand('copy');
-          if (successful) {
-            alert('Error report copied to clipboard!');
-          } else {
-            alert('Failed to copy. Please manually select and copy the text.');
-          }
-        } catch (err) {
-          alert('Failed to copy. Please manually select and copy the text.');
-        }
-
-        document.body.removeChild(textArea);
+        alert('Failed to copy. Please manually select and copy the text.');
       }
     } catch (err) {
+      document.body.removeChild(textArea);
       console.error('Failed to copy text: ', err);
       alert('Failed to copy. Please manually select and copy the text.');
     }
@@ -1104,7 +1106,7 @@ const PLXCrescentCompare = () => {
             <p className="text-gray-600">Compare ProLogistix and Crescent reports to identify discrepancies</p>
           </div>
           <div className="text-right">
-            <span className="text-sm text-gray-500 font-mono">v1.4.0</span>
+            <span className="text-sm text-gray-500 font-mono">v1.4.1</span>
           </div>
         </div>
       </div>
