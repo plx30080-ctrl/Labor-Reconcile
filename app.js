@@ -124,24 +124,20 @@ const PLXCrescentCompare = () => {
 
         const columnMapping = {};
         let currentDay = '';
+        const maxCols = Math.max(dayRow.length, hourTypeRow.length);
 
-        console.log('PLX hourTypeRow (row 4):', hourTypeRow);
-        console.log('PLX dayRow (row 3):', dayRow);
-
-        dayRow.forEach((cell, idx) => {
+        for (let idx = 0; idx < maxCols; idx++) {
+          const cell = dayRow[idx];
           if (cell && typeof cell === 'string' && cell.trim()) {
             currentDay = cell.trim();
           }
           if (currentDay && hourTypeRow[idx]) {
             const hourType = hourTypeRow[idx].toString().trim();
-            console.log(`col ${idx}: day="${currentDay}" hourType="${hourType}"`);
             if (hourType.includes('Reg') || hourType.includes('OT') || hourType.includes('DT')) {
               columnMapping[idx] = { day: currentDay, hourType };
             }
           }
-        });
-
-        console.log('columnMapping:', columnMapping);
+        }
 
         const headerRow = jsonData[4];
         const fileColIdx = headerRow.findIndex(h => h && h.toString().toLowerCase().includes('file'));
