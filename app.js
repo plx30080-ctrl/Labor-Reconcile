@@ -320,11 +320,15 @@ const PLXCrescentCompare = () => {
     
     filteredData.forEach(record => {
       let totalHours = 0;
-      
+      let otHours = 0;
+
       Object.entries(record.columnMapping).forEach(([colIdx, info]) => {
         if (info.day === selectedDay) {
           const value = parseFloat(record.row[colIdx]) || 0;
           totalHours += value;
+          if (info.hourType.includes('OT')) {
+            otHours += value;
+          }
         }
       });
 
@@ -333,13 +337,15 @@ const PLXCrescentCompare = () => {
           EID: record.EID,
           Name: record.Name,
           Total_Hours: 0,
+          OT_Hours: 0,
           Direct_Hours: 0,
           Indirect_Hours: 0,
           Department: record.department
         };
       }
-      
+
       aggregated[record.EID].Total_Hours += totalHours;
+      aggregated[record.EID].OT_Hours += otHours;
 
       // By default PLX hours are Direct unless Dept contains -251-221 (Indirect)
       if (record.department.includes('-251-221')) {
@@ -354,6 +360,7 @@ const PLXCrescentCompare = () => {
       .map(record => ({
         ...record,
         Total_Hours: Math.round(record.Total_Hours * 100) / 100,
+        OT_Hours: Math.round(record.OT_Hours * 100) / 100,
         Direct_Hours: Math.round(record.Direct_Hours * 100) / 100,
         Indirect_Hours: Math.round(record.Indirect_Hours * 100) / 100
       }));
@@ -1525,6 +1532,7 @@ const PLXCrescentCompare = () => {
                           EID: '',
                           Name: '',
                           Total_Hours: 0,
+                          OT_Hours: 0,
                           Direct_Hours: 0,
                           Indirect_Hours: 0
                         };
@@ -1551,6 +1559,7 @@ const PLXCrescentCompare = () => {
                           </th>
                           <th className="p-3 text-left font-semibold">Dept</th>
                           <th className="p-3 text-right font-semibold">Total</th>
+                          <th className="p-3 text-right font-semibold">OT Hrs</th>
                           <th className="p-3 text-right font-semibold">Direct</th>
                           <th className="p-3 text-right font-semibold">Indirect</th>
                           <th className="p-3 text-center font-semibold">Actions</th>
@@ -1594,6 +1603,11 @@ const PLXCrescentCompare = () => {
                             </td>
                             <td className="p-2 text-right">
                               <span className="text-sm px-2 py-1">{row.Total_Hours.toFixed(2)}</span>
+                            </td>
+                            <td className="p-2 text-right">
+                              <span className={`text-sm px-2 py-1 ${(row.OT_Hours || 0) > 0 ? 'text-orange-600 font-medium' : 'text-gray-400'}`}>
+                                {(row.OT_Hours || 0).toFixed(2)}
+                              </span>
                             </td>
                             <td className="p-2 text-right">
                               <input
