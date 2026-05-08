@@ -206,18 +206,9 @@ const PLXCrescentCompare = () => {
         let jsonData;
         
         if (fileName.endsWith('.csv')) {
-          const text = e.target.result;
-          const lines = text.split('\n');
-          const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
-          
-          jsonData = lines.slice(1).filter(line => line.trim()).map(line => {
-            const values = line.split(',').map(v => v.trim().replace(/"/g, ''));
-            const obj = {};
-            headers.forEach((header, idx) => {
-              obj[header] = values[idx] || '';
-            });
-            return obj;
-          });
+          const workbook = XLSX.read(e.target.result, { type: 'string' });
+          const sheet = workbook.Sheets[workbook.SheetNames[0]];
+          jsonData = XLSX.utils.sheet_to_json(sheet, { defval: '' });
         } else {
           const data = new Uint8Array(e.target.result);
           const workbook = XLSX.read(data, { type: 'array' });
