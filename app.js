@@ -54,6 +54,32 @@ const Lightbulb = ({ size = 24, className = "" }) => (
   </svg>
 );
 
+const Trash2 = ({ size = 24, className = "" }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <polyline points="3 6 5 6 21 6" />
+    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+    <line x1="10" y1="11" x2="10" y2="17" />
+    <line x1="14" y1="11" x2="14" y2="17" />
+  </svg>
+);
+
+const RefreshCw = ({ size = 24, className = "" }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <polyline points="23 4 23 10 17 10" />
+    <polyline points="1 20 1 14 7 14" />
+    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+  </svg>
+);
+
+const ArrowLeftRight = ({ size = 24, className = "" }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <polyline points="17 1 21 5 17 9" />
+    <path d="M3 11V9a4 4 0 0 1 4-4h14" />
+    <polyline points="7 23 3 19 7 15" />
+    <path d="M21 13v2a4 4 0 0 1-4 4H3" />
+  </svg>
+);
+
 // Component code starts here
 const PLXCrescentCompare = () => {
   const [plxData, setPlxData] = useState(null);
@@ -1105,690 +1131,557 @@ const PLXCrescentCompare = () => {
   };
 
   return (
-    <div className="w-full max-w-[1800px] mx-auto p-6 bg-gradient-to-br from-blue-50 to-indigo-50 min-h-screen">
-      <div className="mb-8">
+    <div className="w-full max-w-[1800px] mx-auto bg-slate-50 min-h-screen">
+
+      {/* ── Phase 1+2: Slim header ── */}
+      <div className="bg-white border-b border-slate-200 px-6 py-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-4xl font-bold text-gray-800 mb-2">Labor Hours Comparison Tool</h1>
-            <p className="text-gray-600">Compare ProLogistix and Crescent reports to identify discrepancies</p>
+            <h1 className="text-xl font-semibold text-slate-900 tracking-tight">Labor Hours Comparison</h1>
+            <p className="text-xs text-slate-400 mt-0.5">Compare ProLogistix and Crescent reports · identify discrepancies</p>
           </div>
-          <div className="text-right">
-            <span className="text-sm text-gray-500 font-mono">v1.4.2</span>
-          </div>
+          <span className="text-xs bg-slate-100 text-slate-500 px-2.5 py-1 rounded-full font-mono">v1.4.2</span>
         </div>
       </div>
 
-      {/* File Upload Section */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-        <div className="bg-white p-6 rounded-xl shadow-lg border-2 border-transparent hover:border-blue-300 transition-all">
-          <label className="flex items-center justify-center w-full h-36 border-3 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-all">
-            <div className="text-center">
-              <Upload className="mx-auto mb-3 text-blue-500" size={40} />
-              <span className="text-sm font-medium text-gray-700">
-                {plxFile ? plxFile.name : 'Upload PLX Report (Excel)'}
-              </span>
-              <p className="text-xs text-gray-500 mt-1">Click to browse</p>
-            </div>
-            <input
-              type="file"
-              className="hidden"
-              accept=".xlsx,.xls"
-              onChange={(e) => {
-                const file = e.target.files[0];
-                if (file) {
-                  setPlxFile(file);
-                  parsePLXFile(file);
-                }
-              }}
-            />
-          </label>
+      <div className="px-6 py-6 space-y-5">
+
+        {/* ── Phase 2: Progress steps ── */}
+        <div className="flex items-center">
+          {[
+            { n: 1, label: 'Upload Files', done: !!(plxFile && crescentFile), active: !plxFile || !crescentFile },
+            { n: 2, label: 'Configure', done: !!(crescentProcessed.length > 0 && editedPlxRows.length > 0), active: !!(plxData && !(crescentProcessed.length > 0 && editedPlxRows.length > 0)) },
+            { n: 3, label: 'Review & Export', done: false, active: !!(crescentProcessed.length > 0 && editedPlxRows.length > 0) }
+          ].map((step, i) => (
+            <React.Fragment key={step.n}>
+              <div className="flex items-center gap-2">
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold transition-colors flex-shrink-0 ${
+                  step.done ? 'bg-blue-600 text-white' :
+                  step.active ? 'bg-blue-100 text-blue-600 ring-2 ring-blue-500 ring-offset-1' :
+                  'bg-slate-200 text-slate-400'
+                }`}>
+                  {step.done ? '✓' : step.n}
+                </div>
+                <span className={`text-xs font-medium whitespace-nowrap ${step.done || step.active ? 'text-slate-700' : 'text-slate-400'}`}>{step.label}</span>
+              </div>
+              {i < 2 && <div className={`flex-1 h-px mx-3 ${step.done ? 'bg-blue-300' : 'bg-slate-200'}`} />}
+            </React.Fragment>
+          ))}
         </div>
 
-        <div className="bg-white p-6 rounded-xl shadow-lg border-2 border-transparent hover:border-indigo-300 transition-all">
-          <label className="flex items-center justify-center w-full h-36 border-3 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-indigo-500 hover:bg-indigo-50 transition-all">
-            <div className="text-center">
-              <Upload className="mx-auto mb-3 text-indigo-500" size={40} />
-              <span className="text-sm font-medium text-gray-700">
-                {crescentFile ? crescentFile.name : 'Upload Crescent Report (CSV/Excel)'}
-              </span>
-              <p className="text-xs text-gray-500 mt-1">Click to browse</p>
-            </div>
-            <input
-              type="file"
-              className="hidden"
-              accept=".csv,.xlsx,.xls"
-              onChange={(e) => {
+        {/* ── Phase 2: Compact upload cards ── */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className={`bg-white border rounded-xl p-4 transition-all ${plxFile ? 'border-emerald-200 bg-emerald-50/30' : 'border-slate-200 hover:border-blue-300'}`}>
+            <label className="cursor-pointer flex items-center gap-3">
+              <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${plxFile ? 'bg-emerald-100' : 'bg-slate-100'}`}>
+                {plxFile
+                  ? <CheckCircle size={18} className="text-emerald-600" />
+                  : <Upload size={18} className="text-slate-400" />}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium text-slate-700">PLX Report</div>
+                <div className="text-xs text-slate-400 truncate mt-0.5">{plxFile ? plxFile.name : 'Excel (.xlsx, .xls)'}</div>
+              </div>
+              {plxFile && <span className="text-xs text-emerald-600 font-medium flex-shrink-0">Loaded ✓</span>}
+              <input type="file" className="hidden" accept=".xlsx,.xls" onChange={(e) => {
                 const file = e.target.files[0];
-                if (file) {
-                  setCrescentFile(file);
-                  parseCrescentFile(file);
-                }
-              }}
-            />
-          </label>
-        </div>
-      </div>
+                if (file) { setPlxFile(file); parsePLXFile(file); }
+              }} />
+            </label>
+          </div>
 
-      {/* Day and Shift Selection */}
-      {plxData && (
-        <div className="mb-6 bg-white p-6 rounded-xl shadow-lg">
-          <h3 className="text-lg font-semibold mb-4 text-gray-800">Comparison Settings</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Day to Compare
-              </label>
+          <div className={`bg-white border rounded-xl p-4 transition-all ${crescentFile ? 'border-emerald-200 bg-emerald-50/30' : 'border-slate-200 hover:border-blue-300'}`}>
+            <label className="cursor-pointer flex items-center gap-3">
+              <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${crescentFile ? 'bg-emerald-100' : 'bg-slate-100'}`}>
+                {crescentFile
+                  ? <CheckCircle size={18} className="text-emerald-600" />
+                  : <Upload size={18} className="text-slate-400" />}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium text-slate-700">Crescent Report</div>
+                <div className="text-xs text-slate-400 truncate mt-0.5">{crescentFile ? crescentFile.name : 'CSV or Excel (.csv, .xlsx, .xls)'}</div>
+              </div>
+              {crescentFile && <span className="text-xs text-emerald-600 font-medium flex-shrink-0">Loaded ✓</span>}
+              <input type="file" className="hidden" accept=".csv,.xlsx,.xls" onChange={(e) => {
+                const file = e.target.files[0];
+                if (file) { setCrescentFile(file); parseCrescentFile(file); }
+              }} />
+            </label>
+          </div>
+        </div>
+
+        {/* ── Phase 3: Sticky settings toolbar ── */}
+        {plxData && (
+          <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-sm border border-slate-200 rounded-xl px-4 py-3 flex flex-wrap items-center gap-3 shadow-sm">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Day</span>
               <select
                 value={selectedDay}
                 onChange={(e) => setSelectedDay(e.target.value)}
-                className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition-all"
+                className="border border-slate-300 rounded-md px-2.5 py-1.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none bg-white text-slate-700"
               >
-                {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => (
+                {['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].map(day => (
                   <option key={day} value={day}>{day}</option>
                 ))}
               </select>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Shift
-              </label>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Shift</span>
               <select
                 value={selectedShift}
                 onChange={(e) => setSelectedShift(e.target.value)}
-                className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition-all"
+                className="border border-slate-300 rounded-md px-2.5 py-1.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none bg-white text-slate-700"
               >
                 <option value="1st Shift">1st Shift</option>
                 <option value="2nd Shift">2nd Shift</option>
               </select>
             </div>
-            <div className="flex items-end gap-3">
-              <button
-                onClick={() => setRefreshTrigger(prev => prev + 1)}
-                className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-lg hover:from-blue-600 hover:to-indigo-700 font-semibold shadow-md hover:shadow-lg transition-all"
-              >
-                Refresh Comparison
-              </button>
-              <button
-                onClick={handleExportRevisedPlx}
-                disabled={!plxData || editedPlxRows.length === 0}
-                className="flex-1 px-6 py-3 bg-gradient-to-r from-green-500 to-teal-600 text-white rounded-lg hover:from-green-600 hover:to-teal-700 font-semibold shadow-md hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Export Revised PLX
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Totals Summary */}
-      {crescentProcessed.length > 0 && editedPlxRows.length > 0 && (
-        <div className="mb-6 bg-gradient-to-r from-blue-500 to-indigo-600 text-white p-6 rounded-xl shadow-lg">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Crescent Totals */}
-            <div className="bg-white/10 p-4 rounded-lg backdrop-blur-sm">
-              <h3 className="text-lg font-bold mb-3 flex items-center gap-2">
-                <span className="bg-white/20 px-3 py-1 rounded">Crescent Totals</span>
-              </h3>
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="font-medium">Total Hours:</span>
-                  <span className="text-2xl font-bold">{totalCrescent.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between items-center text-sm opacity-90">
-                  <span>Direct Hours:</span>
-                  <span className="text-lg font-semibold">{totalCrescentDirect.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between items-center text-sm opacity-90">
-                  <span>Indirect Hours:</span>
-                  <span className="text-lg font-semibold">{totalCrescentIndirect.toFixed(2)}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* PLX Totals */}
-            <div className="bg-white/10 p-4 rounded-lg backdrop-blur-sm">
-              <h3 className="text-lg font-bold mb-3 flex items-center gap-2">
-                <span className="bg-white/20 px-3 py-1 rounded">PLX Totals</span>
-              </h3>
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="font-medium">Total Hours:</span>
-                  <span className="text-2xl font-bold">{totalPLX.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between items-center text-sm opacity-90">
-                  <span>Direct Hours:</span>
-                  <span className="text-lg font-semibold">{totalPLXDirect.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between items-center text-sm opacity-90">
-                  <span>Indirect Hours:</span>
-                  <span className="text-lg font-semibold">{totalPLXIndirect.toFixed(2)}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Match Indicator */}
-          <div className="mt-4 flex items-center justify-center gap-3 bg-white/20 px-4 py-3 rounded-lg">
-            {totalsMatch ? (
-              <>
-                <CheckCircle className="text-green-300" size={28} />
-                <span className="font-semibold text-lg">Perfect Match!</span>
-              </>
-            ) : (
-              <>
-                <AlertCircle className="text-yellow-300" size={28} />
-                <div>
-                  <div className="font-semibold text-lg">Difference Found</div>
-                  <div className="text-sm opacity-90">{totalDiff.toFixed(2)} hours off</div>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Detail Tables */}
-      {crescentProcessed.length > 0 && editedPlxRows.length > 0 && (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 gap-6">
-            {/* Crescent Detail */}
-            <div className="bg-white rounded-xl shadow-lg border-2 border-gray-200">
-              <button
-                onClick={() => setCrescentCollapsed(!crescentCollapsed)}
-                className="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition-colors rounded-t-xl"
-              >
-                <h2 className="text-xl font-bold text-indigo-700">Crescent Detail</h2>
-                <div className="flex items-center gap-3">
-                  <span className="text-sm text-gray-600">{editedCrescentRows.length} records</span>
-                  {crescentCollapsed ? <ChevronRight size={24} /> : <ChevronDown size={24} />}
-                </div>
-              </button>
-              {!crescentCollapsed && (
-                <div className="p-6 pt-0">
-                  <div className="flex items-center justify-between mb-4 gap-3">
-                    <input
-                      type="text"
-                      placeholder="Search by EID, Badge, or Line..."
-                      value={crescentSearch}
-                      onChange={(e) => setCrescentSearch(e.target.value)}
-                      className="flex-1 px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-indigo-500 focus:outline-none text-sm"
-                    />
-                    <button
-                      onClick={() => {
-                        const newRow = {
-                          EID: '',
-                          Badge_Last3: '',
-                          FullBadges: '',
-                          Lines: '',
-                          Total_Hours: 0,
-                          Direct_Hours: 0,
-                          Indirect_Hours: 0,
-                          ClockIn: '',
-                          ClockOut: ''
-                        };
-                        setEditedCrescentRows([...editedCrescentRows, newRow]);
-                      }}
-                      className="px-3 py-1.5 bg-green-500 text-white rounded-lg hover:bg-green-600 text-sm font-medium shadow-sm transition-all"
-                    >
-                      + Add Row
-                    </button>
-                  </div>
-                  <div className="overflow-auto max-h-[500px] border-2 border-gray-200 rounded-lg">
-                    <table className="w-full text-sm">
-                      <thead className="bg-indigo-50 sticky top-0">
-                        <tr>
-                          <th className="p-3 text-left">
-                            <button onClick={() => sortCrescentData('EID')} className="flex items-center gap-1 font-semibold hover:text-indigo-600">
-                              EID <ArrowUpDown size={14} />
-                            </button>
-                          </th>
-                          <th className="p-3 text-left">
-                            <button onClick={() => sortCrescentData('Badge')} className="flex items-center gap-1 font-semibold hover:text-indigo-600">
-                              Badge <ArrowUpDown size={14} />
-                            </button>
-                          </th>
-                          <th className="p-3 text-left">
-                            <button onClick={() => sortCrescentData('Lines')} className="flex items-center gap-1 font-semibold hover:text-indigo-600">
-                              Lines <ArrowUpDown size={14} />
-                            </button>
-                          </th>
-                          <th className="p-3 text-right font-semibold">Total</th>
-                          <th className="p-3 text-right font-semibold">Direct</th>
-                          <th className="p-3 text-right font-semibold">Indirect</th>
-                          <th className="p-3 text-center font-semibold">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredCrescentRows.map((row, idx) => {
-                          const originalIdx = row._originalIdx;
-                          const isSplit = row._isSplit;
-                          const isIndirect = row._type === 'indirect';
-                          return (
-                          <tr key={`${originalIdx}-${row._type}`} className={`border-t border-gray-200 hover:bg-indigo-50/50 transition-colors ${isSplit ? 'bg-gray-50' : ''}`}>
-                            <td className="p-2">
-                              <input
-                                type="text"
-                                value={row.EID}
-                                onChange={(e) => {
-                                  const newRows = [...editedCrescentRows];
-                                  const newEID = e.target.value;
-                                  newRows[originalIdx].EID = newEID;
-
-                                  // Reconstruct FullBadges when EID changes
-                                  if (newEID && newRows[originalIdx].Badge_Last3) {
-                                    // If EID starts with NAME_ or UNRECOGNIZED_, use it as-is for the badge
-                                    if (newEID.startsWith('NAME_') || newEID.startsWith('UNRECOGNIZED_')) {
-                                      newRows[originalIdx].FullBadges = `PLX-${newRows[originalIdx].Badge_Last3}`;
-                                    } else {
-                                      // Standard numeric EID format
-                                      newRows[originalIdx].FullBadges = `PLX-${newEID}-${newRows[originalIdx].Badge_Last3}`;
-                                    }
-                                  }
-
-                                  setEditedCrescentRows(newRows);
-                                }}
-                                className="w-full border border-gray-300 rounded px-2 py-1 focus:border-indigo-500 focus:outline-none"
-                                disabled={isSplit}
-                              />
-                            </td>
-                            <td className="p-2">
-                              <input
-                                type="text"
-                                value={row.Badge_Last3}
-                                onChange={(e) => {
-                                  const newRows = [...editedCrescentRows];
-                                  const newLast3 = e.target.value.toUpperCase();
-                                  newRows[originalIdx].Badge_Last3 = newLast3;
-
-                                  // Construct FullBadges from EID and Badge_Last3
-                                  if (newRows[originalIdx].EID && newLast3) {
-                                    // If EID starts with NAME_ or UNRECOGNIZED_, use it as-is for the badge
-                                    if (newRows[originalIdx].EID.startsWith('NAME_') || newRows[originalIdx].EID.startsWith('UNRECOGNIZED_')) {
-                                      newRows[originalIdx].FullBadges = `PLX-${newLast3}`;
-                                    } else {
-                                      // Standard numeric EID format
-                                      newRows[originalIdx].FullBadges = `PLX-${newRows[originalIdx].EID}-${newLast3}`;
-                                    }
-                                  } else if (newRows[originalIdx].FullBadges) {
-                                    // Fallback: update existing FullBadges by replacing last 3 chars
-                                    const badgeBase = newRows[originalIdx].FullBadges.slice(0, -3);
-                                    newRows[originalIdx].FullBadges = badgeBase + newLast3;
-                                  }
-
-                                  setEditedCrescentRows(newRows);
-                                }}
-                                title={row.FullBadges}
-                                className="w-full border border-gray-300 rounded px-2 py-1 text-xs focus:border-indigo-500 focus:outline-none uppercase"
-                                placeholder="ABC"
-                                maxLength="3"
-                                disabled={isSplit}
-                              />
-                            </td>
-                            <td className="p-2">
-                              <input
-                                type="text"
-                                value={row.Lines}
-                                onChange={(e) => {
-                                  const newRows = [...editedCrescentRows];
-                                  newRows[originalIdx].Lines = e.target.value;
-                                  setEditedCrescentRows(newRows);
-                                }}
-                                className="w-full border border-gray-300 rounded px-2 py-1 text-xs focus:border-indigo-500 focus:outline-none"
-                                placeholder="e.g., LINEG, LINEK"
-                                disabled={isSplit}
-                              />
-                            </td>
-                            <td className="p-2 text-right">
-                              <span className="text-sm px-2 py-1">{row.Total_Hours.toFixed(2)}</span>
-                            </td>
-                            <td className="p-2 text-right">
-                              <input
-                                type="number"
-                                step="0.01"
-                                value={row.Direct_Hours}
-                                onChange={(e) => {
-                                  const newRows = [...editedCrescentRows];
-                                  const newValue = parseFloat(e.target.value) || 0;
-                                  if (isSplit) {
-                                    newRows[originalIdx].Direct_Hours = newValue;
-                                    newRows[originalIdx].Total_Hours = newValue + newRows[originalIdx].Indirect_Hours;
-                                  } else {
-                                    newRows[originalIdx].Direct_Hours = newValue;
-                                    newRows[originalIdx].Total_Hours = newValue + newRows[originalIdx].Indirect_Hours;
-                                  }
-                                  setEditedCrescentRows(newRows);
-                                }}
-                                className="w-20 text-right border border-gray-300 rounded px-2 py-1 focus:border-indigo-500 focus:outline-none"
-                                disabled={isSplit && !isIndirect}
-                              />
-                            </td>
-                            <td className="p-2 text-right">
-                              <input
-                                type="number"
-                                step="0.01"
-                                value={row.Indirect_Hours}
-                                onChange={(e) => {
-                                  const newRows = [...editedCrescentRows];
-                                  const newValue = parseFloat(e.target.value) || 0;
-                                  if (isSplit) {
-                                    newRows[originalIdx].Indirect_Hours = newValue;
-                                    newRows[originalIdx].Total_Hours = newValue + newRows[originalIdx].Direct_Hours;
-                                  } else {
-                                    newRows[originalIdx].Indirect_Hours = newValue;
-                                    newRows[originalIdx].Total_Hours = newValue + newRows[originalIdx].Direct_Hours;
-                                  }
-                                  setEditedCrescentRows(newRows);
-                                }}
-                                className="w-20 text-right border border-gray-300 rounded px-2 py-1 focus:border-indigo-500 focus:outline-none"
-                                disabled={isSplit && isIndirect}
-                              />
-                            </td>
-                            <td className="p-2 text-center">
-                              <button
-                                onClick={() => {
-                                  const newRows = editedCrescentRows.filter((_, i) => i !== originalIdx);
-                                  setEditedCrescentRows(newRows);
-                                }}
-                                className="text-red-500 hover:text-red-700 text-xs font-medium"
-                              >
-                                Delete
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* PLX Detail */}
-            <div className="bg-white rounded-xl shadow-lg border-2 border-gray-200">
-              <button
-                onClick={() => setPlxCollapsed(!plxCollapsed)}
-                className="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition-colors rounded-t-xl"
-              >
-                <h2 className="text-xl font-bold text-blue-700">PLX Detail ({selectedDay} - {selectedShift})</h2>
-                <div className="flex items-center gap-3">
-                  <span className="text-sm text-gray-600">{editedPlxRows.length} records</span>
-                  {plxCollapsed ? <ChevronRight size={24} /> : <ChevronDown size={24} />}
-                </div>
-              </button>
-              {!plxCollapsed && (
-                <div className="p-6 pt-0">
-                  <div className="flex items-center justify-between mb-4 gap-3">
-                    <input
-                      type="text"
-                      placeholder="Search by EID or Name..."
-                      value={plxSearch}
-                      onChange={(e) => setPlxSearch(e.target.value)}
-                      className="flex-1 px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none text-sm"
-                    />
-                    <button
-                      onClick={() => {
-                        const newRow = {
-                          EID: '',
-                          Name: '',
-                          Total_Hours: 0,
-                          OT_Hours: 0,
-                          Direct_Hours: 0,
-                          Indirect_Hours: 0
-                        };
-                        setEditedPlxRows([...editedPlxRows, newRow]);
-                      }}
-                      className="px-3 py-1.5 bg-green-500 text-white rounded-lg hover:bg-green-600 text-sm font-medium shadow-sm transition-all"
-                    >
-                      + Add Row
-                    </button>
-                  </div>
-                  <div className="overflow-auto max-h-[500px] border-2 border-gray-200 rounded-lg">
-                    <table className="w-full text-sm">
-                      <thead className="bg-blue-50 sticky top-0">
-                        <tr>
-                          <th className="p-3 text-left">
-                            <button onClick={() => sortPlxData('EID')} className="flex items-center gap-1 font-semibold hover:text-blue-600">
-                              EID <ArrowUpDown size={14} />
-                            </button>
-                          </th>
-                          <th className="p-3 text-left">
-                            <button onClick={() => sortPlxData('Name')} className="flex items-center gap-1 font-semibold hover:text-blue-600">
-                              Name <ArrowUpDown size={14} />
-                            </button>
-                          </th>
-                          <th className="p-3 text-left font-semibold">Dept</th>
-                          <th className="p-3 text-right font-semibold">Total</th>
-                          <th className="p-3 text-right font-semibold">OT Hrs</th>
-                          <th className="p-3 text-right font-semibold">Direct</th>
-                          <th className="p-3 text-right font-semibold">Indirect</th>
-                          <th className="p-3 text-center font-semibold">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredPlxRows.map((row, idx) => {
-                          const originalIdx = row._originalIdx;
-                          const isSplit = row._isSplit;
-                          const isIndirect = row._type === 'indirect';
-                          return (
-                          <tr key={`${originalIdx}-${row._type}`} className={`border-t border-gray-200 hover:bg-blue-50/50 transition-colors ${isSplit ? 'bg-gray-50' : ''}`}>
-                            <td className="p-2">
-                              <input
-                                type="text"
-                                value={row.EID}
-                                onChange={(e) => {
-                                  const newRows = [...editedPlxRows];
-                                  newRows[originalIdx].EID = e.target.value;
-                                  setEditedPlxRows(newRows);
-                                }}
-                                className="w-full border border-gray-300 rounded px-2 py-1 focus:border-blue-500 focus:outline-none"
-                                disabled={isSplit}
-                              />
-                            </td>
-                            <td className="p-2">
-                              <input
-                                type="text"
-                                value={row.Name}
-                                onChange={(e) => {
-                                  const newRows = [...editedPlxRows];
-                                  newRows[originalIdx].Name = e.target.value;
-                                  setEditedPlxRows(newRows);
-                                }}
-                                className="w-full border border-gray-300 rounded px-2 py-1 focus:border-blue-500 focus:outline-none"
-                                disabled={isSplit}
-                              />
-                            </td>
-                            <td className="p-2">
-                              <span className="text-xs px-2 py-1" title={row.Department}>{row.Department || '-'}</span>
-                            </td>
-                            <td className="p-2 text-right">
-                              <span className="text-sm px-2 py-1">{row.Total_Hours.toFixed(2)}</span>
-                            </td>
-                            <td className="p-2 text-right">
-                              <span className={`text-sm px-2 py-1 ${(row.OT_Hours || 0) > 0 ? 'text-orange-600 font-medium' : 'text-gray-400'}`}>
-                                {(row.OT_Hours || 0).toFixed(2)}
-                              </span>
-                            </td>
-                            <td className="p-2 text-right">
-                              <input
-                                type="number"
-                                step="0.01"
-                                value={row.Direct_Hours}
-                                onChange={(e) => {
-                                  const newRows = [...editedPlxRows];
-                                  const newValue = parseFloat(e.target.value) || 0;
-                                  if (isSplit) {
-                                    newRows[originalIdx].Direct_Hours = newValue;
-                                    newRows[originalIdx].Total_Hours = newValue + newRows[originalIdx].Indirect_Hours;
-                                  } else {
-                                    newRows[originalIdx].Direct_Hours = newValue;
-                                    newRows[originalIdx].Total_Hours = newValue + newRows[originalIdx].Indirect_Hours;
-                                  }
-                                  setEditedPlxRows(newRows);
-                                }}
-                                className="w-20 text-right border border-gray-300 rounded px-2 py-1 focus:border-blue-500 focus:outline-none"
-                                disabled={isSplit && !isIndirect}
-                              />
-                            </td>
-                            <td className="p-2 text-right">
-                              <input
-                                type="number"
-                                step="0.01"
-                                value={row.Indirect_Hours}
-                                onChange={(e) => {
-                                  const newRows = [...editedPlxRows];
-                                  const newValue = parseFloat(e.target.value) || 0;
-                                  if (isSplit) {
-                                    newRows[originalIdx].Indirect_Hours = newValue;
-                                    newRows[originalIdx].Total_Hours = newValue + newRows[originalIdx].Direct_Hours;
-                                  } else {
-                                    newRows[originalIdx].Indirect_Hours = newValue;
-                                    newRows[originalIdx].Total_Hours = newValue + newRows[originalIdx].Direct_Hours;
-                                  }
-                                  setEditedPlxRows(newRows);
-                                }}
-                                className="w-20 text-right border border-gray-300 rounded px-2 py-1 focus:border-blue-500 focus:outline-none"
-                                disabled={isSplit && isIndirect}
-                              />
-                            </td>
-                            <td className="p-2 text-center">
-                              <button
-                                onClick={() => {
-                                  const newRows = editedPlxRows.filter((_, i) => i !== originalIdx);
-                                  setEditedPlxRows(newRows);
-                                }}
-                                className="text-red-500 hover:text-red-700 text-xs font-medium"
-                              >
-                                Delete
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Recommendations Table */}
-          {recommendations.length > 0 && (
-            <div className="bg-white p-6 rounded-xl shadow-lg border-2 border-yellow-200">
-              <div className="flex items-center gap-3 mb-4">
-                <Lightbulb className="text-yellow-500" size={28} />
-                <div>
-                  <h2 className="text-xl font-bold text-gray-800">Smart Recommendations</h2>
-                  <p className="text-sm text-gray-600">Possible badge matches detected based on names and EID patterns</p>
-                </div>
-              </div>
-              <div className="overflow-auto border-2 border-yellow-200 rounded-lg">
-                <table className="w-full text-sm">
-                  <thead className="bg-yellow-50">
-                    <tr>
-                      <th className="p-3 text-left font-semibold">Type</th>
-                      <th className="p-3 text-left font-semibold">Crescent</th>
-                      <th className="p-3 text-right font-semibold">C Hours</th>
-                      <th className="p-3 text-left font-semibold">PLX</th>
-                      <th className="p-3 text-right font-semibold">P Hours</th>
-                      <th className="p-3 text-left font-semibold">Reason</th>
-                      <th className="p-3 text-center font-semibold">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {recommendations.map((rec, idx) => (
-                      <tr key={idx} className="border-t border-yellow-200 hover:bg-yellow-50/50">
-                        <td className="p-3">
-                          <span className={`px-2 py-1 rounded text-xs font-medium ${
-                            rec.type === 'Name-Based Badge' ? 'bg-indigo-100 text-indigo-800' :
-                            rec.type === 'Name Match' ? 'bg-purple-100 text-purple-800' :
-                            rec.type === 'EID Typo' ? 'bg-orange-100 text-orange-800' :
-                            rec.type === 'Multiple Digits' ? 'bg-pink-100 text-pink-800' :
-                            rec.type === 'Digit Pattern' ? 'bg-teal-100 text-teal-800' :
-                            'bg-blue-100 text-blue-800'
-                          }`}>
-                            {rec.type}
-                          </span>
-                        </td>
-                        <td className="p-3">
-                          <div className="font-medium">{rec.crescentEID}</div>
-                          <div className="text-xs text-gray-500">{rec.crescentBadge}</div>
-                        </td>
-                        <td className="p-3 text-right font-medium">{rec.crescentHours.toFixed(2)}</td>
-                        <td className="p-3">
-                          <div className="font-medium">{rec.plxEID}</div>
-                          <div className="text-xs text-gray-500">{rec.plxName}</div>
-                        </td>
-                        <td className="p-3 text-right font-medium">{rec.plxHours.toFixed(2)}</td>
-                        <td className="p-3 text-xs text-gray-600">{rec.reason}</td>
-                        <td className="p-3 text-center">
-                          <button
-                            onClick={() => handleFixRecommendation(rec)}
-                            className="px-3 py-1 bg-green-500 text-white rounded-lg hover:bg-green-600 text-xs font-medium transition-all"
-                          >
-                            Fix
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          {/* Collapsible Comparison Summary */}
-          <div className="bg-white rounded-xl shadow-lg border-2 border-gray-200">
             <button
-              onClick={() => setComparisonCollapsed(!comparisonCollapsed)}
-              className="w-full p-6 flex items-center justify-between hover:bg-gray-50 transition-colors"
+              onClick={() => setRefreshTrigger(prev => prev + 1)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium transition-colors"
             >
-              <h2 className="text-xl font-bold text-gray-800">Comparison Summary</h2>
-              {comparisonCollapsed ? <ChevronRight size={24} /> : <ChevronDown size={24} />}
+              <RefreshCw size={13} />
+              Refresh
             </button>
-            {!comparisonCollapsed && (
-              <div className="p-6 pt-0">
-                <div className="mb-4">
-                  <input
-                    type="text"
-                    placeholder="Search by EID, Name, Badge, or Line..."
-                    value={comparisonSearch}
-                    onChange={(e) => setComparisonSearch(e.target.value)}
-                    className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none text-sm"
-                  />
+            <div className="flex-1" />
+            <button
+              onClick={handleExportRevisedPlx}
+              disabled={!plxData || editedPlxRows.length === 0}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Export Revised PLX ↓
+            </button>
+          </div>
+        )}
+
+        {/* ── Phase 4: Metric strip ── */}
+        {crescentProcessed.length > 0 && editedPlxRows.length > 0 && (
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            <div className="bg-white border border-slate-200 rounded-xl px-4 py-3">
+              <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Crescent Total</div>
+              <div className="text-2xl font-bold text-slate-900 mt-1 tabular-nums">{totalCrescent.toFixed(2)}</div>
+              <div className="text-xs text-slate-400 mt-0.5">D {totalCrescentDirect.toFixed(2)} · I {totalCrescentIndirect.toFixed(2)}</div>
+            </div>
+            <div className="bg-white border border-slate-200 rounded-xl px-4 py-3">
+              <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide">PLX Total</div>
+              <div className="text-2xl font-bold text-slate-900 mt-1 tabular-nums">{totalPLX.toFixed(2)}</div>
+              <div className="text-xs text-slate-400 mt-0.5">D {totalPLXDirect.toFixed(2)} · I {totalPLXIndirect.toFixed(2)}</div>
+            </div>
+            <div className="bg-white border border-slate-200 rounded-xl px-4 py-3">
+              <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Direct Hours</div>
+              <div className="text-2xl font-bold text-slate-900 mt-1 tabular-nums">{totalCrescentDirect.toFixed(2)}</div>
+              <div className="text-xs text-slate-400 mt-0.5">Crescent</div>
+            </div>
+            <div className="bg-white border border-slate-200 rounded-xl px-4 py-3">
+              <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Indirect Hours</div>
+              <div className="text-2xl font-bold text-slate-900 mt-1 tabular-nums">{totalCrescentIndirect.toFixed(2)}</div>
+              <div className="text-xs text-slate-400 mt-0.5">Crescent</div>
+            </div>
+            <div className={`border rounded-xl px-4 py-3 ${totalsMatch ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'}`}>
+              <div className={`text-xs font-semibold uppercase tracking-wide ${totalsMatch ? 'text-emerald-600' : 'text-red-500'}`}>
+                {totalsMatch ? 'Status' : 'Difference'}
+              </div>
+              <div className={`text-2xl font-bold mt-1 tabular-nums ${totalsMatch ? 'text-emerald-700' : 'text-red-600'}`}>
+                {totalsMatch ? 'Match ✓' : `${totalDiff.toFixed(2)} hrs`}
+              </div>
+              <div className={`text-xs mt-0.5 ${totalsMatch ? 'text-emerald-500' : 'text-red-400'}`}>
+                {totalsMatch ? 'Perfect alignment' : 'Hours off'}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Phase 5: Unified detail tables ── */}
+        {crescentProcessed.length > 0 && editedPlxRows.length > 0 && (
+          <div className="space-y-4">
+
+            {/* Crescent + PLX in one card */}
+            <div className="bg-white border border-slate-200 rounded-xl shadow-sm divide-y divide-slate-200">
+
+              {/* Crescent Detail */}
+              <div>
+                <button
+                  onClick={() => setCrescentCollapsed(!crescentCollapsed)}
+                  className="w-full px-5 py-4 flex items-center justify-between hover:bg-slate-50 transition-colors rounded-t-xl"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-sm font-semibold text-slate-700">Crescent Detail</span>
+                    <span className="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">{editedCrescentRows.length} records</span>
+                  </div>
+                  {crescentCollapsed ? <ChevronRight size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
+                </button>
+                {!crescentCollapsed && (
+                  <div className="px-5 pb-5">
+                    <div className="flex items-center gap-2 mb-3">
+                      <input
+                        type="text"
+                        placeholder="Search by EID, Badge, or Line…"
+                        value={crescentSearch}
+                        onChange={(e) => setCrescentSearch(e.target.value)}
+                        className="flex-1 border border-slate-300 rounded-md px-3 py-1.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                      />
+                      <button
+                        onClick={() => setEditedCrescentRows([...editedCrescentRows, { EID:'', Badge_Last3:'', FullBadges:'', Lines:'', Total_Hours:0, Direct_Hours:0, Indirect_Hours:0, ClockIn:'', ClockOut:'' }])}
+                        className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-md text-xs font-medium transition-colors whitespace-nowrap"
+                      >
+                        + Add Row
+                      </button>
+                    </div>
+                    <div className="overflow-auto max-h-[500px] border border-slate-200 rounded-lg">
+                      <table className="w-full text-sm">
+                        <thead className="bg-slate-50 sticky top-0 border-b border-slate-200">
+                          <tr>
+                            <th className="p-3 text-left">
+                              <button onClick={() => sortCrescentData('EID')} className="flex items-center gap-1 text-xs font-semibold text-slate-500 uppercase tracking-wide hover:text-slate-800 transition-colors">
+                                EID {crescentSort.column === 'EID' ? (crescentSort.direction === 'asc' ? ' ↑' : ' ↓') : <ArrowUpDown size={11} className="text-slate-300 ml-0.5" />}
+                              </button>
+                            </th>
+                            <th className="p-3 text-left">
+                              <button onClick={() => sortCrescentData('Badge')} className="flex items-center gap-1 text-xs font-semibold text-slate-500 uppercase tracking-wide hover:text-slate-800 transition-colors">
+                                Badge {crescentSort.column === 'Badge' ? (crescentSort.direction === 'asc' ? ' ↑' : ' ↓') : <ArrowUpDown size={11} className="text-slate-300 ml-0.5" />}
+                              </button>
+                            </th>
+                            <th className="p-3 text-left">
+                              <button onClick={() => sortCrescentData('Lines')} className="flex items-center gap-1 text-xs font-semibold text-slate-500 uppercase tracking-wide hover:text-slate-800 transition-colors">
+                                Lines {crescentSort.column === 'Lines' ? (crescentSort.direction === 'asc' ? ' ↑' : ' ↓') : <ArrowUpDown size={11} className="text-slate-300 ml-0.5" />}
+                              </button>
+                            </th>
+                            <th className="p-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wide">Total</th>
+                            <th className="p-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wide">Direct</th>
+                            <th className="p-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wide">Indirect</th>
+                            <th className="p-3 w-10"></th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {filteredCrescentRows.length === 0 ? (
+                            <tr><td colSpan="7" className="p-8 text-center text-sm text-slate-400">
+                              {crescentSearch ? `No results for "${crescentSearch}"` : 'No records'}
+                            </td></tr>
+                          ) : filteredCrescentRows.map((row) => {
+                            const originalIdx = row._originalIdx;
+                            const isSplit = row._isSplit;
+                            const isIndirect = row._type === 'indirect';
+                            return (
+                              <tr key={`${originalIdx}-${row._type}`} className={`hover:bg-slate-50 transition-colors ${isSplit ? 'bg-slate-50/60' : ''}`}>
+                                <td className="p-2 pl-3">
+                                  <input
+                                    type="text"
+                                    value={row.EID}
+                                    onChange={(e) => {
+                                      const newRows = [...editedCrescentRows];
+                                      const newEID = e.target.value;
+                                      newRows[originalIdx].EID = newEID;
+                                      if (newEID && newRows[originalIdx].Badge_Last3) {
+                                        if (newEID.startsWith('NAME_') || newEID.startsWith('UNRECOGNIZED_')) {
+                                          newRows[originalIdx].FullBadges = `PLX-${newRows[originalIdx].Badge_Last3}`;
+                                        } else {
+                                          newRows[originalIdx].FullBadges = `PLX-${newEID}-${newRows[originalIdx].Badge_Last3}`;
+                                        }
+                                      }
+                                      setEditedCrescentRows(newRows);
+                                    }}
+                                    className={`w-full bg-transparent border-0 border-b border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none px-0 py-0.5 text-sm transition-colors ${isSplit ? 'text-slate-400 cursor-default' : 'text-slate-700'}`}
+                                    disabled={isSplit}
+                                  />
+                                </td>
+                                <td className="p-2">
+                                  <input
+                                    type="text"
+                                    value={row.Badge_Last3}
+                                    onChange={(e) => {
+                                      const newRows = [...editedCrescentRows];
+                                      const newLast3 = e.target.value.toUpperCase();
+                                      newRows[originalIdx].Badge_Last3 = newLast3;
+                                      if (newRows[originalIdx].EID && newLast3) {
+                                        if (newRows[originalIdx].EID.startsWith('NAME_') || newRows[originalIdx].EID.startsWith('UNRECOGNIZED_')) {
+                                          newRows[originalIdx].FullBadges = `PLX-${newLast3}`;
+                                        } else {
+                                          newRows[originalIdx].FullBadges = `PLX-${newRows[originalIdx].EID}-${newLast3}`;
+                                        }
+                                      } else if (newRows[originalIdx].FullBadges) {
+                                        const badgeBase = newRows[originalIdx].FullBadges.slice(0, -3);
+                                        newRows[originalIdx].FullBadges = badgeBase + newLast3;
+                                      }
+                                      setEditedCrescentRows(newRows);
+                                    }}
+                                    title={row.FullBadges}
+                                    className={`w-14 bg-transparent border-0 border-b border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none px-0 py-0.5 text-xs uppercase transition-colors ${isSplit ? 'text-slate-400 cursor-default' : 'text-slate-700'}`}
+                                    placeholder="ABC"
+                                    maxLength="3"
+                                    disabled={isSplit}
+                                  />
+                                </td>
+                                <td className="p-2">
+                                  <input
+                                    type="text"
+                                    value={row.Lines}
+                                    onChange={(e) => {
+                                      const newRows = [...editedCrescentRows];
+                                      newRows[originalIdx].Lines = e.target.value;
+                                      setEditedCrescentRows(newRows);
+                                    }}
+                                    className={`w-full bg-transparent border-0 border-b border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none px-0 py-0.5 text-xs transition-colors ${isSplit ? 'text-slate-400 cursor-default' : 'text-slate-700'}`}
+                                    placeholder="e.g., LINEG, LINEK"
+                                    disabled={isSplit}
+                                  />
+                                </td>
+                                <td className="p-2 text-right text-sm font-medium text-slate-700 tabular-nums">{row.Total_Hours.toFixed(2)}</td>
+                                <td className="p-2 text-right">
+                                  <input
+                                    type="number"
+                                    step="0.01"
+                                    value={row.Direct_Hours}
+                                    onChange={(e) => {
+                                      const newRows = [...editedCrescentRows];
+                                      const newValue = parseFloat(e.target.value) || 0;
+                                      newRows[originalIdx].Direct_Hours = newValue;
+                                      newRows[originalIdx].Total_Hours = newValue + newRows[originalIdx].Indirect_Hours;
+                                      setEditedCrescentRows(newRows);
+                                    }}
+                                    className={`w-16 text-right bg-transparent border-0 border-b border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none px-0 py-0.5 text-sm tabular-nums transition-colors ${(isSplit && !isIndirect) ? 'text-slate-400 cursor-default' : 'text-slate-700'}`}
+                                    disabled={isSplit && !isIndirect}
+                                  />
+                                </td>
+                                <td className="p-2 text-right">
+                                  <input
+                                    type="number"
+                                    step="0.01"
+                                    value={row.Indirect_Hours}
+                                    onChange={(e) => {
+                                      const newRows = [...editedCrescentRows];
+                                      const newValue = parseFloat(e.target.value) || 0;
+                                      newRows[originalIdx].Indirect_Hours = newValue;
+                                      newRows[originalIdx].Total_Hours = newValue + newRows[originalIdx].Direct_Hours;
+                                      setEditedCrescentRows(newRows);
+                                    }}
+                                    className={`w-16 text-right bg-transparent border-0 border-b border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none px-0 py-0.5 text-sm tabular-nums transition-colors ${(isSplit && isIndirect) ? 'text-slate-400 cursor-default' : 'text-slate-700'}`}
+                                    disabled={isSplit && isIndirect}
+                                  />
+                                </td>
+                                <td className="p-2 text-center">
+                                  <button
+                                    onClick={() => setEditedCrescentRows(editedCrescentRows.filter((_, i) => i !== originalIdx))}
+                                    className="text-slate-300 hover:text-red-500 transition-colors p-1 rounded"
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* PLX Detail */}
+              <div>
+                <button
+                  onClick={() => setPlxCollapsed(!plxCollapsed)}
+                  className="w-full px-5 py-4 flex items-center justify-between hover:bg-slate-50 transition-colors"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-sm font-semibold text-slate-700">PLX Detail</span>
+                    <span className="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">{editedPlxRows.length} records</span>
+                    <span className="text-xs text-slate-400">{selectedDay} · {selectedShift}</span>
+                  </div>
+                  {plxCollapsed ? <ChevronRight size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
+                </button>
+                {!plxCollapsed && (
+                  <div className="px-5 pb-5">
+                    <div className="flex items-center gap-2 mb-3">
+                      <input
+                        type="text"
+                        placeholder="Search by EID or Name…"
+                        value={plxSearch}
+                        onChange={(e) => setPlxSearch(e.target.value)}
+                        className="flex-1 border border-slate-300 rounded-md px-3 py-1.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                      />
+                      <button
+                        onClick={() => setEditedPlxRows([...editedPlxRows, { EID:'', Name:'', Total_Hours:0, OT_Hours:0, Direct_Hours:0, Indirect_Hours:0 }])}
+                        className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-md text-xs font-medium transition-colors whitespace-nowrap"
+                      >
+                        + Add Row
+                      </button>
+                    </div>
+                    <div className="overflow-auto max-h-[500px] border border-slate-200 rounded-lg">
+                      <table className="w-full text-sm">
+                        <thead className="bg-slate-50 sticky top-0 border-b border-slate-200">
+                          <tr>
+                            <th className="p-3 text-left">
+                              <button onClick={() => sortPlxData('EID')} className="flex items-center gap-1 text-xs font-semibold text-slate-500 uppercase tracking-wide hover:text-slate-800 transition-colors">
+                                EID {plxSort.column === 'EID' ? (plxSort.direction === 'asc' ? ' ↑' : ' ↓') : <ArrowUpDown size={11} className="text-slate-300 ml-0.5" />}
+                              </button>
+                            </th>
+                            <th className="p-3 text-left">
+                              <button onClick={() => sortPlxData('Name')} className="flex items-center gap-1 text-xs font-semibold text-slate-500 uppercase tracking-wide hover:text-slate-800 transition-colors">
+                                Name {plxSort.column === 'Name' ? (plxSort.direction === 'asc' ? ' ↑' : ' ↓') : <ArrowUpDown size={11} className="text-slate-300 ml-0.5" />}
+                              </button>
+                            </th>
+                            <th className="p-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Dept</th>
+                            <th className="p-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wide">Total</th>
+                            <th className="p-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                              <span className="inline-flex items-center gap-1">OT <span className="text-orange-400 font-medium bg-orange-50 px-1 rounded normal-case tracking-normal text-[10px]">sub</span></span>
+                            </th>
+                            <th className="p-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wide">Direct</th>
+                            <th className="p-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wide">Indirect</th>
+                            <th className="p-3 w-10"></th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {filteredPlxRows.length === 0 ? (
+                            <tr><td colSpan="8" className="p-8 text-center text-sm text-slate-400">
+                              {plxSearch ? `No results for "${plxSearch}"` : 'No records'}
+                            </td></tr>
+                          ) : filteredPlxRows.map((row) => {
+                            const originalIdx = row._originalIdx;
+                            const isSplit = row._isSplit;
+                            const isIndirect = row._type === 'indirect';
+                            return (
+                              <tr key={`${originalIdx}-${row._type}`} className={`hover:bg-slate-50 transition-colors ${isSplit ? 'bg-slate-50/60' : ''}`}>
+                                <td className="p-2 pl-3">
+                                  <input
+                                    type="text"
+                                    value={row.EID}
+                                    onChange={(e) => {
+                                      const newRows = [...editedPlxRows];
+                                      newRows[originalIdx].EID = e.target.value;
+                                      setEditedPlxRows(newRows);
+                                    }}
+                                    className={`w-full bg-transparent border-0 border-b border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none px-0 py-0.5 text-sm transition-colors ${isSplit ? 'text-slate-400 cursor-default' : 'text-slate-700'}`}
+                                    disabled={isSplit}
+                                  />
+                                </td>
+                                <td className="p-2">
+                                  <input
+                                    type="text"
+                                    value={row.Name}
+                                    onChange={(e) => {
+                                      const newRows = [...editedPlxRows];
+                                      newRows[originalIdx].Name = e.target.value;
+                                      setEditedPlxRows(newRows);
+                                    }}
+                                    className={`w-full bg-transparent border-0 border-b border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none px-0 py-0.5 text-sm transition-colors ${isSplit ? 'text-slate-400 cursor-default' : 'text-slate-700'}`}
+                                    disabled={isSplit}
+                                  />
+                                </td>
+                                <td className="p-2">
+                                  <span className="text-xs text-slate-500 truncate block max-w-[140px]" title={row.Department}>{row.Department || '—'}</span>
+                                </td>
+                                <td className="p-2 text-right text-sm font-medium text-slate-700 tabular-nums">{row.Total_Hours.toFixed(2)}</td>
+                                <td className="p-2 text-right tabular-nums">
+                                  <span className={`text-sm ${(row.OT_Hours || 0) > 0 ? 'text-orange-500 font-semibold' : 'text-slate-300'}`}>
+                                    {(row.OT_Hours || 0).toFixed(2)}
+                                  </span>
+                                </td>
+                                <td className="p-2 text-right">
+                                  <input
+                                    type="number"
+                                    step="0.01"
+                                    value={row.Direct_Hours}
+                                    onChange={(e) => {
+                                      const newRows = [...editedPlxRows];
+                                      const newValue = parseFloat(e.target.value) || 0;
+                                      newRows[originalIdx].Direct_Hours = newValue;
+                                      newRows[originalIdx].Total_Hours = newValue + newRows[originalIdx].Indirect_Hours;
+                                      setEditedPlxRows(newRows);
+                                    }}
+                                    className={`w-16 text-right bg-transparent border-0 border-b border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none px-0 py-0.5 text-sm tabular-nums transition-colors ${(isSplit && !isIndirect) ? 'text-slate-400 cursor-default' : 'text-slate-700'}`}
+                                    disabled={isSplit && !isIndirect}
+                                  />
+                                </td>
+                                <td className="p-2 text-right">
+                                  <input
+                                    type="number"
+                                    step="0.01"
+                                    value={row.Indirect_Hours}
+                                    onChange={(e) => {
+                                      const newRows = [...editedPlxRows];
+                                      const newValue = parseFloat(e.target.value) || 0;
+                                      newRows[originalIdx].Indirect_Hours = newValue;
+                                      newRows[originalIdx].Total_Hours = newValue + newRows[originalIdx].Direct_Hours;
+                                      setEditedPlxRows(newRows);
+                                    }}
+                                    className={`w-16 text-right bg-transparent border-0 border-b border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none px-0 py-0.5 text-sm tabular-nums transition-colors ${(isSplit && isIndirect) ? 'text-slate-400 cursor-default' : 'text-slate-700'}`}
+                                    disabled={isSplit && isIndirect}
+                                  />
+                                </td>
+                                <td className="p-2 text-center">
+                                  <button
+                                    onClick={() => setEditedPlxRows(editedPlxRows.filter((_, i) => i !== originalIdx))}
+                                    className="text-slate-300 hover:text-red-500 transition-colors p-1 rounded"
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+            </div>{/* end unified card */}
+
+            {/* ── Phase 6: Smart Recommendations ── */}
+            {recommendations.length > 0 && (
+              <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+                <div className="px-5 py-3.5 flex items-center gap-3 bg-amber-50/50 border-b border-amber-100">
+                  <Lightbulb className="text-amber-500 flex-shrink-0" size={16} />
+                  <span className="text-sm font-semibold text-slate-700">Smart Recommendations</span>
+                  <span className="text-xs text-slate-400">· {recommendations.length} suggestion{recommendations.length !== 1 ? 's' : ''}</span>
+                  <span className="text-xs text-slate-400 ml-auto hidden md:block">Possible badge matches detected based on names and EID patterns</span>
                 </div>
-                <div className="overflow-auto border-2 border-gray-200 rounded-lg max-h-96">
+                <div className="overflow-auto">
                   <table className="w-full text-sm">
-                    <thead className="bg-gray-100 sticky top-0">
+                    <thead className="bg-slate-50 border-b border-slate-200">
                       <tr>
-                        <th className="p-3 text-left font-semibold">EID</th>
-                        <th className="p-3 text-left font-semibold">Name</th>
-                        <th className="p-3 text-left font-semibold">Lines</th>
-                        <th className="p-3 text-right font-semibold">Crescent</th>
-                        <th className="p-3 text-right font-semibold">PLX</th>
-                        <th className="p-3 text-center font-semibold">Status</th>
+                        <th className="p-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Type</th>
+                        <th className="p-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Crescent</th>
+                        <th className="p-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wide">C Hrs</th>
+                        <th className="p-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">PLX</th>
+                        <th className="p-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wide">P Hrs</th>
+                        <th className="p-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Reason</th>
+                        <th className="p-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wide">Action</th>
                       </tr>
                     </thead>
-                    <tbody>
-                      {filteredComparison.map((row, idx) => (
-                        <tr
-                          key={idx}
-                          className={`border-t border-gray-200 hover:bg-gray-50 ${row.Status === 'Mismatch' ? 'bg-red-50' : ''}`}
-                        >
-                          <td className="p-3">{row.EID}</td>
-                          <td className="p-3">{row.Name}</td>
-                          <td className="p-3">{row.Lines || '-'}</td>
-                          <td className="p-3 text-right">{row.Total_Hours_Crescent.toFixed(2)}</td>
-                          <td className="p-3 text-right">{row.Total_Hours_PLX.toFixed(2)}</td>
-                          <td className="p-3 text-center">
-                            <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                              row.Status === 'Match'
-                                ? 'bg-green-100 text-green-800'
-                                : 'bg-red-100 text-red-800'
+                    <tbody className="divide-y divide-slate-100">
+                      {recommendations.map((rec, idx) => (
+                        <tr key={idx} className="hover:bg-slate-50 transition-colors">
+                          <td className="p-3">
+                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                              (rec.type === 'Name-Based Badge' || rec.type === 'Name Match')
+                                ? 'bg-purple-50 text-purple-700'
+                                : (rec.type === 'EID Typo' || rec.type === 'Multiple Digits' || rec.type === 'Digit Pattern')
+                                ? 'bg-amber-50 text-amber-700'
+                                : 'bg-blue-50 text-blue-700'
                             }`}>
-                              {row.Status}
+                              {rec.type}
                             </span>
+                          </td>
+                          <td className="p-3">
+                            <div className="font-medium text-slate-700">{rec.crescentEID}</div>
+                            <div className="text-xs text-slate-400">{rec.crescentBadge}</div>
+                          </td>
+                          <td className="p-3 text-right font-medium text-slate-700 tabular-nums">{rec.crescentHours.toFixed(2)}</td>
+                          <td className="p-3">
+                            <div className="font-medium text-slate-700">{rec.plxEID}</div>
+                            <div className="text-xs text-slate-400">{rec.plxName}</div>
+                          </td>
+                          <td className="p-3 text-right font-medium text-slate-700 tabular-nums">{rec.plxHours.toFixed(2)}</td>
+                          <td className="p-3 text-xs text-slate-500">{rec.reason}</td>
+                          <td className="p-3 text-center">
+                            <button
+                              onClick={() => handleFixRecommendation(rec)}
+                              className="px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 rounded-md text-xs font-medium transition-colors"
+                            >
+                              ✓ Apply
+                            </button>
                           </td>
                         </tr>
                       ))}
@@ -1797,157 +1690,196 @@ const PLXCrescentCompare = () => {
                 </div>
               </div>
             )}
-          </div>
 
-          {/* Mismatches Table */}
-          {mismatches.length > 0 && (
-            <div className="bg-white p-6 rounded-xl shadow-lg border-2 border-red-200">
-              <div className="flex items-center gap-3 mb-4">
-                <AlertCircle className="text-red-500" size={28} />
-                <div>
-                  <h2 className="text-xl font-bold text-gray-800">Discrepancies ({mismatches.length})</h2>
-                  <p className="text-sm text-gray-600">Review and mark Crescent errors to generate report</p>
+            {/* ── Phase 7: Comparison Summary ── */}
+            <div className="bg-white border border-slate-200 rounded-xl shadow-sm">
+              <button
+                onClick={() => setComparisonCollapsed(!comparisonCollapsed)}
+                className="w-full px-5 py-4 flex items-center justify-between hover:bg-slate-50 transition-colors rounded-xl"
+              >
+                <div className="flex items-center gap-2.5">
+                  <span className="text-sm font-semibold text-slate-700">Comparison Summary</span>
+                  <span className="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">{comparison.length} records</span>
+                  {mismatches.length > 0 && (
+                    <span className="text-xs bg-red-50 text-red-500 border border-red-200 px-2 py-0.5 rounded-full">
+                      {mismatches.length} mismatch{mismatches.length !== 1 ? 'es' : ''}
+                    </span>
+                  )}
                 </div>
-              </div>
-              <div className="overflow-auto border-2 border-red-200 rounded-lg">
-                <table className="w-full text-sm">
-                  <thead className="bg-red-50">
-                    <tr>
-                      <th className="p-3 text-center font-semibold">Crescent Error</th>
-                      <th className="p-3 text-left font-semibold">EID</th>
-                      <th className="p-3 text-left font-semibold">Name</th>
-                      <th className="p-3 text-right font-semibold">Crescent</th>
-                      <th className="p-3 text-right font-semibold">PLX</th>
-                      <th className="p-3 text-right font-semibold">Diff</th>
-                      <th className="p-3 text-left font-semibold">Notes</th>
-                      <th className="p-3 text-center font-semibold">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {mismatches.map((row, idx) => (
-                      <tr key={idx} className="border-t border-red-200 hover:bg-red-50/50">
-                        <td className="p-3 text-center">
-                          <input
-                            type="checkbox"
-                            checked={crescentErrors.has(row.EID)}
-                            onChange={(e) => {
-                              const newErrors = new Set(crescentErrors);
-                              if (e.target.checked) {
-                                newErrors.add(row.EID);
-                              } else {
-                                newErrors.delete(row.EID);
-                              }
-                              setCrescentErrors(newErrors);
-                            }}
-                            className="w-5 h-5 cursor-pointer"
-                          />
-                        </td>
-                        <td className="p-3">
-                          <input
-                            type="text"
-                            value={row.EID}
-                            onChange={(e) => {
-                              const oldEID = row.EID;
-                              const newEID = e.target.value;
-                              
-                              // Update Crescent rows - find by matching EID and badge
-                              const updatedCrescent = editedCrescentRows.map(r => {
-                                if (r.EID === oldEID && row.Total_Hours_Crescent > 0) {
-                                  return {
-                                    ...r,
-                                    EID: newEID,
-                                    FullBadges: r.FullBadges.replace(
-                                      new RegExp(`PLX-${oldEID}-`, 'i'),
-                                      `PLX-${newEID}-`
-                                    ),
-                                    Badge_Last3: r.FullBadges.replace(
-                                      new RegExp(`PLX-${oldEID}-`, 'i'),
-                                      `PLX-${newEID}-`
-                                    ).slice(-3)
-                                  };
-                                }
-                                return r;
-                              });
-                              
-                              // Update PLX rows
-                              const updatedPlx = editedPlxRows.map(r => {
-                                if (r.EID === oldEID && row.Total_Hours_PLX > 0) {
-                                  return { ...r, EID: newEID };
-                                }
-                                return r;
-                              });
-                              
-                              setEditedCrescentRows(updatedCrescent);
-                              setEditedPlxRows(updatedPlx);
-                              
-                              // Trigger refresh after a short delay to allow state to update
-                              setTimeout(() => setRefreshTrigger(prev => prev + 1), 100);
-                            }}
-                            className="w-24 border border-gray-300 rounded px-2 py-1 font-medium focus:border-red-500 focus:outline-none"
-                          />
-                        </td>
-                        <td className="p-3">
-                          {row.Name || <span className="text-gray-500 italic">{row.FullBadges.match(/[A-Za-z]{3}$/)?.[0] || 'N/A'}</span>}
-                        </td>
-                        <td className="p-3 text-right font-medium">{row.Total_Hours_Crescent.toFixed(2)}</td>
-                        <td className="p-3 text-right font-medium">{row.Total_Hours_PLX.toFixed(2)}</td>
-                        <td className="p-3 text-right font-bold text-red-600">
-                          {Math.abs(row.Total_Hours_Crescent - row.Total_Hours_PLX).toFixed(2)}
-                        </td>
-                        <td className="p-3">
-                          <input
-                            type="text"
-                            value={mismatchNotes[row.EID] || ''}
-                            onChange={(e) => {
-                              setMismatchNotes(prev => ({
-                                ...prev,
-                                [row.EID]: e.target.value
-                              }));
-                            }}
-                            placeholder="Add notes..."
-                            className="w-full border border-gray-300 rounded px-2 py-1 text-xs focus:border-red-500 focus:outline-none"
-                          />
-                        </td>
-                        <td className="p-3 text-center">
-                          <button
-                            onClick={() => handlePlxSync(row.EID)}
-                            className="px-3 py-1 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-xs font-medium transition-all whitespace-nowrap"
-                            title="Sync PLX hours to match Crescent"
-                          >
-                            PLX Sync
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Error Report */}
-              {errorReportText && (
-                <div className="mt-6 p-4 bg-gray-50 rounded-lg border-2 border-gray-200">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="font-bold text-gray-800 flex items-center gap-2">
-                      <Copy size={20} />
-                      Error Report for Client
-                    </h3>
-                    <button
-                      onClick={handleCopyReport}
-                      className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-lg hover:from-blue-600 hover:to-indigo-700 font-medium shadow-md transition-all"
-                    >
-                      <Copy size={16} />
-                      Copy to Clipboard
-                    </button>
+                {comparisonCollapsed ? <ChevronRight size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
+              </button>
+              {!comparisonCollapsed && (
+                <div className="px-5 pb-5 border-t border-slate-200">
+                  <div className="pt-3 mb-3">
+                    <input
+                      type="text"
+                      placeholder="Search by EID, Name, Badge, or Line…"
+                      value={comparisonSearch}
+                      onChange={(e) => setComparisonSearch(e.target.value)}
+                      className="w-full border border-slate-300 rounded-md px-3 py-1.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                    />
                   </div>
-                  <pre className="whitespace-pre-wrap text-sm text-gray-700 font-mono bg-white p-4 rounded-lg border border-gray-300 max-h-64 overflow-auto">
-                    {errorReportText}
-                  </pre>
+                  <div className="overflow-auto border border-slate-200 rounded-lg max-h-96">
+                    <table className="w-full text-sm">
+                      <thead className="bg-slate-50 sticky top-0 border-b border-slate-200">
+                        <tr>
+                          <th className="p-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">EID</th>
+                          <th className="p-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Name</th>
+                          <th className="p-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Lines</th>
+                          <th className="p-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wide">Crescent</th>
+                          <th className="p-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wide">PLX</th>
+                          <th className="p-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wide">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {filteredComparison.length === 0 ? (
+                          <tr><td colSpan="6" className="p-8 text-center text-sm text-slate-400">
+                            {comparisonSearch ? `No results for "${comparisonSearch}"` : 'No records'}
+                          </td></tr>
+                        ) : filteredComparison.map((row, idx) => (
+                          <tr key={idx} className={`hover:bg-slate-50 transition-colors ${row.Status === 'Mismatch' ? 'bg-red-50/40' : ''}`}>
+                            <td className={`p-3 text-slate-700 ${row.Status === 'Mismatch' ? 'border-l-2 border-l-red-400' : ''}`}>{row.EID}</td>
+                            <td className="p-3 text-slate-700">{row.Name}</td>
+                            <td className="p-3 text-slate-500">{row.Lines || '—'}</td>
+                            <td className="p-3 text-right text-slate-700 tabular-nums">{row.Total_Hours_Crescent.toFixed(2)}</td>
+                            <td className="p-3 text-right text-slate-700 tabular-nums">{row.Total_Hours_PLX.toFixed(2)}</td>
+                            <td className="p-3">
+                              <div className="flex items-center justify-center gap-1.5">
+                                <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${row.Status === 'Match' ? 'bg-emerald-500' : 'bg-red-500'}`} />
+                                <span className={`text-xs font-medium ${row.Status === 'Match' ? 'text-emerald-600' : 'text-red-500'}`}>{row.Status}</span>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               )}
             </div>
-          )}
-        </div>
-      )}
+
+            {/* ── Phase 7: Discrepancies ── */}
+            {mismatches.length > 0 && (
+              <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden" style={{borderLeft: '4px solid #f87171'}}>
+                <div className="px-5 py-4 flex items-center gap-3 border-b border-slate-200">
+                  <AlertCircle className="text-red-400 flex-shrink-0" size={16} />
+                  <span className="text-sm font-semibold text-slate-700">Discrepancies</span>
+                  <span className="text-xs bg-red-50 text-red-500 border border-red-200 px-2 py-0.5 rounded-full">{mismatches.length}</span>
+                  <span className="text-xs text-slate-400 ml-1">Review and mark Crescent errors to generate report</span>
+                </div>
+                <div className="overflow-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-slate-50 border-b border-slate-200">
+                      <tr>
+                        <th className="p-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wide">Error</th>
+                        <th className="p-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">EID</th>
+                        <th className="p-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Name</th>
+                        <th className="p-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wide">Crescent</th>
+                        <th className="p-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wide">PLX</th>
+                        <th className="p-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wide">Diff</th>
+                        <th className="p-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Notes</th>
+                        <th className="p-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wide">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {mismatches.map((row, idx) => (
+                        <tr key={idx} className="hover:bg-slate-50 transition-colors">
+                          <td className="p-3 text-center">
+                            <input
+                              type="checkbox"
+                              checked={crescentErrors.has(row.EID)}
+                              onChange={(e) => {
+                                const newErrors = new Set(crescentErrors);
+                                if (e.target.checked) { newErrors.add(row.EID); } else { newErrors.delete(row.EID); }
+                                setCrescentErrors(newErrors);
+                              }}
+                              className="w-4 h-4 cursor-pointer accent-red-500"
+                            />
+                          </td>
+                          <td className="p-3">
+                            <input
+                              type="text"
+                              value={row.EID}
+                              onChange={(e) => {
+                                const oldEID = row.EID;
+                                const newEID = e.target.value;
+                                const updatedCrescent = editedCrescentRows.map(r => {
+                                  if (r.EID === oldEID && row.Total_Hours_Crescent > 0) {
+                                    return {
+                                      ...r,
+                                      EID: newEID,
+                                      FullBadges: r.FullBadges.replace(new RegExp(`PLX-${oldEID}-`, 'i'), `PLX-${newEID}-`),
+                                      Badge_Last3: r.FullBadges.replace(new RegExp(`PLX-${oldEID}-`, 'i'), `PLX-${newEID}-`).slice(-3)
+                                    };
+                                  }
+                                  return r;
+                                });
+                                const updatedPlx = editedPlxRows.map(r => r.EID === oldEID && row.Total_Hours_PLX > 0 ? { ...r, EID: newEID } : r);
+                                setEditedCrescentRows(updatedCrescent);
+                                setEditedPlxRows(updatedPlx);
+                                setTimeout(() => setRefreshTrigger(prev => prev + 1), 100);
+                              }}
+                              className="w-24 bg-transparent border-0 border-b border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none px-0 py-0.5 text-sm font-medium text-slate-700 transition-colors"
+                            />
+                          </td>
+                          <td className="p-3 text-slate-700">
+                            {row.Name || <span className="text-slate-400 italic">{row.FullBadges?.match(/[A-Za-z]{3}$/)?.[0] || 'N/A'}</span>}
+                          </td>
+                          <td className="p-3 text-right font-medium text-slate-700 tabular-nums">{row.Total_Hours_Crescent.toFixed(2)}</td>
+                          <td className="p-3 text-right font-medium text-slate-700 tabular-nums">{row.Total_Hours_PLX.toFixed(2)}</td>
+                          <td className="p-3 text-right font-bold text-red-500 tabular-nums">{Math.abs(row.Total_Hours_Crescent - row.Total_Hours_PLX).toFixed(2)}</td>
+                          <td className="p-3">
+                            <input
+                              type="text"
+                              value={mismatchNotes[row.EID] || ''}
+                              onChange={(e) => setMismatchNotes(prev => ({ ...prev, [row.EID]: e.target.value }))}
+                              placeholder="Add notes…"
+                              className="w-full bg-transparent border-0 border-b border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none px-0 py-0.5 text-xs text-slate-600 placeholder-slate-300 transition-colors"
+                            />
+                          </td>
+                          <td className="p-3 text-center">
+                            <button
+                              onClick={() => handlePlxSync(row.EID)}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 rounded-md text-xs font-medium transition-colors whitespace-nowrap"
+                              title="Sync PLX hours to match Crescent"
+                            >
+                              <ArrowLeftRight size={11} />
+                              Sync Hours
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* ── Phase 7+8: Dark error report block ── */}
+                {errorReportText && (
+                  <div className="mx-5 mb-5 mt-4">
+                    <div className="bg-slate-900 rounded-xl overflow-hidden">
+                      <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-700">
+                        <span className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Error Report for Client</span>
+                        <button
+                          onClick={handleCopyReport}
+                          className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-md text-xs font-medium transition-colors"
+                        >
+                          <Copy size={12} />
+                          Copy
+                        </button>
+                      </div>
+                      <pre className="px-4 py-4 whitespace-pre-wrap text-xs text-slate-200 font-mono leading-relaxed max-h-64 overflow-auto">
+                        {errorReportText}
+                      </pre>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+          </div>
+        )}
+
+      </div>
     </div>
   );
 };
