@@ -1171,43 +1171,39 @@ const PLXCrescentCompare = () => {
 
         {/* ── Phase 2: Compact upload cards ── */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div className={`bg-white border rounded-xl p-4 transition-all ${plxFile ? 'border-emerald-200 bg-emerald-50/30' : 'border-slate-200 hover:border-blue-300'}`}>
-            <label className="cursor-pointer flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${plxFile ? 'bg-emerald-100' : 'bg-slate-100'}`}>
-                {plxFile
-                  ? <CheckCircle size={18} className="text-emerald-600" />
-                  : <Upload size={18} className="text-slate-400" />}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium text-slate-700">PLX Report</div>
-                <div className="text-xs text-slate-400 truncate mt-0.5">{plxFile ? plxFile.name : 'Excel (.xlsx, .xls)'}</div>
-              </div>
-              {plxFile && <span className="text-xs text-emerald-600 font-medium flex-shrink-0">Loaded ✓</span>}
-              <input type="file" className="hidden" accept=".xlsx,.xls" onChange={(e) => {
-                const file = e.target.files[0];
-                if (file) { setPlxFile(file); parsePLXFile(file); }
-              }} />
-            </label>
-          </div>
+          <label className={`cursor-pointer bg-white border rounded-xl p-4 transition-all flex items-center gap-3 ${plxFile ? 'border-emerald-200 bg-emerald-50/30' : 'border-slate-200 hover:border-blue-300'}`}>
+            <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${plxFile ? 'bg-emerald-100' : 'bg-slate-100'}`}>
+              {plxFile
+                ? <CheckCircle size={18} className="text-emerald-600" />
+                : <Upload size={18} className="text-slate-400" />}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-medium text-slate-700">PLX Report</div>
+              <div className="text-xs text-slate-400 truncate mt-0.5">{plxFile ? plxFile.name : 'Excel (.xlsx, .xls)'}</div>
+            </div>
+            {plxFile && <span className="text-xs text-emerald-600 font-medium flex-shrink-0">Loaded ✓</span>}
+            <input type="file" className="hidden" accept=".xlsx,.xls" onChange={(e) => {
+              const file = e.target.files[0];
+              if (file) { setPlxFile(file); parsePLXFile(file); }
+            }} />
+          </label>
 
-          <div className={`bg-white border rounded-xl p-4 transition-all ${crescentFile ? 'border-emerald-200 bg-emerald-50/30' : 'border-slate-200 hover:border-blue-300'}`}>
-            <label className="cursor-pointer flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${crescentFile ? 'bg-emerald-100' : 'bg-slate-100'}`}>
-                {crescentFile
-                  ? <CheckCircle size={18} className="text-emerald-600" />
-                  : <Upload size={18} className="text-slate-400" />}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium text-slate-700">Crescent Report</div>
-                <div className="text-xs text-slate-400 truncate mt-0.5">{crescentFile ? crescentFile.name : 'CSV or Excel (.csv, .xlsx, .xls)'}</div>
-              </div>
-              {crescentFile && <span className="text-xs text-emerald-600 font-medium flex-shrink-0">Loaded ✓</span>}
-              <input type="file" className="hidden" accept=".csv,.xlsx,.xls" onChange={(e) => {
-                const file = e.target.files[0];
-                if (file) { setCrescentFile(file); parseCrescentFile(file); }
-              }} />
-            </label>
-          </div>
+          <label className={`cursor-pointer bg-white border rounded-xl p-4 transition-all flex items-center gap-3 ${crescentFile ? 'border-emerald-200 bg-emerald-50/30' : 'border-slate-200 hover:border-blue-300'}`}>
+            <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${crescentFile ? 'bg-emerald-100' : 'bg-slate-100'}`}>
+              {crescentFile
+                ? <CheckCircle size={18} className="text-emerald-600" />
+                : <Upload size={18} className="text-slate-400" />}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-medium text-slate-700">Crescent Report</div>
+              <div className="text-xs text-slate-400 truncate mt-0.5">{crescentFile ? crescentFile.name : 'CSV or Excel (.csv, .xlsx, .xls)'}</div>
+            </div>
+            {crescentFile && <span className="text-xs text-emerald-600 font-medium flex-shrink-0">Loaded ✓</span>}
+            <input type="file" className="hidden" accept=".csv,.xlsx,.xls" onChange={(e) => {
+              const file = e.target.files[0];
+              if (file) { setCrescentFile(file); parseCrescentFile(file); }
+            }} />
+          </label>
         </div>
 
         {/* ── Phase 3: Sticky settings toolbar ── */}
