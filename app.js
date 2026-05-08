@@ -131,9 +131,11 @@ const PLXCrescentCompare = () => {
           if (cell && typeof cell === 'string' && cell.trim()) {
             currentDay = cell.trim();
           }
-          if (currentDay && hourTypeRow[idx]) {
+          if (currentDay && currentDay !== 'Weekly Total' && hourTypeRow[idx]) {
             const hourType = hourTypeRow[idx].toString().trim();
-            if (hourType.includes('Reg') || hourType.includes('OT') || hourType.includes('DT')) {
+            const htLower = hourType.toLowerCase();
+            if ((htLower.includes('hrs') || htLower.includes('hours')) &&
+                (htLower.includes('reg') || htLower.includes('ot') || htLower.includes('dt'))) {
               columnMapping[idx] = { day: currentDay, hourType };
             }
           }
